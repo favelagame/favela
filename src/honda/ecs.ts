@@ -1,34 +1,39 @@
+type Constructor<T = unknown> = new (...args: never[]) => T;
+
 // prevent numbers from being passed as entities
 export type Entity = number & { " brand": "ent" };
 
 export abstract class Component {}
 
 export abstract class System {
-    public abstract componentsRequired: Set<Function>;
+    public abstract componentsRequired: Set<Constructor>;
 
     public abstract update(entities: Set<Entity>): void;
 
     public ecs!: ECS;
 }
 
-export type ComponentClass<T extends Component> = new (...args: any[]) => T;
+export type ComponentClass<T extends Component> = new (...args: never[]) => T;
 
 export class ComponentContainer {
-    private map = new Map<Function, Component>();
+    private map = new Map<Constructor, Component>();
 
     public add(component: Component): void {
-        this.map.set(component.constructor, component);
+        this.map.set(
+            component.constructor as Constructor<Component>,
+            component
+        );
     }
 
     public get<T extends Component>(componentClass: ComponentClass<T>): T {
         return this.map.get(componentClass) as T;
     }
 
-    public has(componentClass: Function): boolean {
+    public has(componentClass: Constructor): boolean {
         return this.map.has(componentClass);
     }
 
-    public hasAll(componentClasses: Iterable<Function>): boolean {
+    public hasAll(componentClasses: Iterable<Constructor>): boolean {
         for (const cls of componentClasses) {
             if (!this.map.has(cls)) {
                 return false;
@@ -37,7 +42,7 @@ export class ComponentContainer {
         return true;
     }
 
-    public delete(componentClass: Function): void {
+    public delete(componentClass: Constructor): void {
         this.map.delete(componentClass);
     }
 }
@@ -81,7 +86,7 @@ export class ECS {
         return this.entities.get(entity)!;
     }
 
-    public removeComponent(entity: Entity, componentClass: Function): void {
+    public removeComponent(entity: Entity, componentClass: Constructor): void {
         this.entities.get(entity)!.delete(componentClass);
         this.checkE(entity);
     }
@@ -122,7 +127,7 @@ export class ECS {
 
         // Remove any entities that were marked for deletion during the
         // update.
-        while (this.entitiesToDestroy.length > 0) {
+        while (this.entitiesToDestroy.length) {
             this.destroyEntity(this.entitiesToDestroy.pop()!);
         }
     }
