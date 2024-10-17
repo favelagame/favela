@@ -4,9 +4,9 @@ import { mat4, quat, vec3 } from "wgpu-matrix";
 export class CTransform extends Component {
     public updateMatrix() {
         mat4.identity(this.matrix);
-        mat4.scale(this.matrix, this.scale, this.matrix);
-        mat4.multiply(this.matrix, mat4.fromQuat(this.rotation), this.matrix);
         mat4.translate(this.matrix, this.translation, this.matrix);
+        mat4.multiply(this.matrix, mat4.fromQuat(this.rotation), this.matrix);
+        mat4.scale(this.matrix, this.scale, this.matrix);
     }
 
     public get transform() {

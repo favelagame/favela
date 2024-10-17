@@ -113,11 +113,11 @@ export class CubeRendererSystem extends System {
                 topology: "triangle-list",
                 cullMode: "back",
             },
-            // depthStencil: {
-            //     depthWriteEnabled: true,
-            //     depthCompare: "less",
-            //     format: "depth24plus",
-            // },
+            depthStencil: {
+                depthWriteEnabled: true,
+                depthCompare: "less",
+                format: "depth24plus",
+            },
         });
 
         // upload cube data to GPU
@@ -197,11 +197,11 @@ export class CubeRendererSystem extends System {
 
         const pass = Game.cmdEncoder.beginRenderPass({
             label: "CubeRenderer",
-            // depthStencilAttachment: {
-            //     view: Game.gpu.depthTexture.createView(),
-            //     depthLoadOp: "load",
-            //     depthStoreOp: "store",
-            // },
+            depthStencilAttachment: {
+                view: Game.gpu.depthTexture.createView(),
+                depthLoadOp: "load",
+                depthStoreOp: "store",
+            },
             colorAttachments: [
                 {
                     view: Game.gpu.ctx.getCurrentTexture().createView(),

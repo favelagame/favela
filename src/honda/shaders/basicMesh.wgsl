@@ -41,7 +41,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let lightDir = normalize(uniforms.sunDirection);
     let normal = normalize(input.fragNormal);
 
-    let diffuse = max(dot(normal, lightDir), 0.0);
+    let diffuse = max(dot(normal, lightDir), 0.05);
 
     return vec4<f32>(input.fragColor * diffuse, 1.0);
 }
