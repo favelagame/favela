@@ -1,9 +1,47 @@
-import { ECS, Game, CTransform, ScriptSystem, CScript } from "./honda/core";
-import {
-    CCubeRenderer,
-    CubeRendererSystem,
-} from "./honda/systems/cubeRenderer";
 import { mat4, quat, vec3 } from "wgpu-matrix";
+
+import {
+    ECS,
+    Game,
+    TransformComponent,
+    ScriptSystem,
+    ScriptComponent,
+    EcsInjectable,
+} from "@/honda/core";
+import {
+    CCubeRendererComponent,
+    CubeRendererSystem,
+} from "@/honda/systems/cubeRenderer";
+import { HondaBehavior } from "@/honda/systems/script/hondaBehavior.class";
+
+@EcsInjectable()
+class FlyScript extends HondaBehavior {
+    constructor(public eid: number, public transform: TransformComponent) {
+        super();
+    }
+
+    override onUpdate(): void {
+        const t = Game.time / 1000;
+        this.transform.translation[0] = 2.5 * Math.sin(t) + 4;
+        this.transform.updateMatrix();
+    }
+}
+
+@EcsInjectable()
+class ExplosionScript extends HondaBehavior {
+    constructor(public eid: number, public transform: TransformComponent) {
+        super();
+    }
+
+    override onUpdate(): void {
+        const t = Game.time / 1000;
+        this.transform.scale[0] =
+            this.transform.scale[1] =
+            this.transform.scale[2] =
+                Math.max(Math.tan(t / 2 + Math.PI / 2), 0);
+        this.transform.updateMatrix();
+    }
+}
 
 function getProjectionMatrix(
     aspectRatio: number,
@@ -36,94 +74,72 @@ export function setupScene(ecs: ECS) {
         )
     );
 
-    {
-        const cube = ecs.addEntity();
-        const ct = new CTransform();
-        ct.translation.set([0.7, 2, 0]);
-        ct.scale.set([0.5, 2, 0.5]);
-        ct.updateMatrix();
+    const tower1 = ecs.addEntity();
+    ecs.addComponent(
+        tower1,
+        new TransformComponent(
+            vec3.create(0.7, 2, 0),
+            quat.create(),
+            vec3.create(0.5, 2, 0.5)
+        )
+    );
+    ecs.addComponent(tower1, new CCubeRendererComponent(0.8, 0.8, 0.8));
 
-        ecs.addComponent(cube, ct);
-        ecs.addComponent(cube, new CCubeRenderer(0.8, 0.8, 0.8));
-    }
+    const tower2 = ecs.addEntity();
+    ecs.addComponent(
+        tower2,
+        new TransformComponent(
+            vec3.create(-0.7, 2, 0),
+            quat.create(),
+            vec3.create(0.5, 2, 0.5)
+        )
+    );
+    ecs.addComponent(tower2, new CCubeRendererComponent(0.8, 0.8, 0.8));
 
-    {
-        const cube = ecs.addEntity();
-        const ct = new CTransform();
-        ct.translation.set([-0.7, 2, 0]);
-        ct.scale.set([0.5, 2, 0.5]);
-        ct.updateMatrix();
+    const floor = ecs.addEntity();
+    ecs.addComponent(
+        floor,
+        new TransformComponent(
+            vec3.create(),
+            quat.create(),
+            vec3.create(5, 0.01, 5)
+        )
+    );
+    ecs.addComponent(floor, new CCubeRendererComponent(0.8, 0.8, 0.8));
 
-        ecs.addComponent(cube, ct);
-        ecs.addComponent(cube, new CCubeRenderer(0.8, 0.8, 0.8));
-    }
+    const planeBody = ecs.addEntity();
+    ecs.addComponent(
+        planeBody,
+        new TransformComponent(
+            vec3.create(0, 2.5, 0),
+            quat.create(),
+            vec3.create(1, 0.1, 0.1)
+        )
+    );
+    ecs.addComponent(planeBody, new CCubeRendererComponent(1.5, 1.5, 1.5));
+    ecs.addComponent(planeBody, new ScriptComponent(FlyScript));
 
-    {
-        const cube = ecs.addEntity();
-        const ct = new CTransform();
-        ct.scale.set([5, 0.01, 5]);
-        ct.updateMatrix();
+    const planeWings = ecs.addEntity();
+    ecs.addComponent(
+        planeWings,
+        new TransformComponent(
+            vec3.create(0, 2.5, 0),
+            quat.create(),
+            vec3.create(0.2, 0.05, 1)
+        )
+    );
+    ecs.addComponent(planeWings, new CCubeRendererComponent(1.5, 1.5, 1.5));
+    ecs.addComponent(planeWings, new ScriptComponent(FlyScript));
 
-        ecs.addComponent(cube, ct);
-        ecs.addComponent(cube, new CCubeRenderer(0.8, 0.8, 0.8));
-    }
-    // {
-    //     const cube = ecs.addEntity();
-    //     ecs.addComponent(cube, new CTransform());
-    //     ecs.addComponent(cube, new CCubeRenderer(1, 0, 0.5));
-    // }
-
-    const flyScript = new CScript((eid, ecs) => {
-        const transform = ecs.getComponents(eid).get(CTransform);
-        const t = Game.time / 1000;
-
-        transform.translation[0] = 2.5 * Math.sin(t) + 4;
-        transform.updateMatrix();
-    });
-
-    {
-        const cube2 = ecs.addEntity();
-        const ct = new CTransform();
-        ct.translation.set([0, 2.5, 0]);
-        ct.scale.set([1, 0.1, 0.1]);
-        ct.updateMatrix();
-        ecs.addComponent(cube2, ct);
-        ecs.addComponent(cube2, new CCubeRenderer(1.5, 1.5, 1.5));
-        ecs.addComponent(cube2, flyScript);
-    }
-
-    {
-        const cube2 = ecs.addEntity();
-        const ct = new CTransform();
-        ct.translation.set([0, 2.5, 0]);
-        ct.scale.set([0.2, 0.05, 1]);
-        ct.updateMatrix();
-        ecs.addComponent(cube2, ct);
-        ecs.addComponent(cube2, new CCubeRenderer(1.5, 1.5, 1.5));
-        ecs.addComponent(cube2, flyScript);
-    }
-
-    {
-        const cube2 = ecs.addEntity();
-        const ct = new CTransform();
-        ct.translation.set([0.7, 2, 0]);
-        ct.scale.set([1, 1, 1]);
-        ct.rotation.set(quat.fromEuler(0.5, 0.4, 0.6, "xyz"));
-        ct.updateMatrix();
-        ecs.addComponent(cube2, ct);
-        ecs.addComponent(cube2, new CCubeRenderer(2, 1.5, 0.3));
-        ecs.addComponent(
-            cube2,
-            new CScript((eid, ecs) => {
-                const transform = ecs.getComponents(eid).get(CTransform);
-                const t = Game.time / 1000;
-
-                transform.scale[0] =
-                    transform.scale[1] =
-                    transform.scale[2] =
-                        Math.max(Math.tan(t / 2 + Math.PI / 2), 0);
-                transform.updateMatrix();
-            })
-        );
-    }
+    const explosion = ecs.addEntity();
+    ecs.addComponent(
+        explosion,
+        new TransformComponent(
+            vec3.create(0.7, 2, 0),
+            quat.fromEuler<Float32Array>(0.5, 0.4, 0.6, "xyz"),
+            vec3.create(1, 1, 1)
+        )
+    );
+    ecs.addComponent(explosion, new CCubeRendererComponent(2, 1.5, 0.3));
+    ecs.addComponent(explosion, new ScriptComponent(ExplosionScript))
 }

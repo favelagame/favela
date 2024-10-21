@@ -1,3 +1,4 @@
+import "reflect-metadata";
 type Constructor<T = unknown> = new (...args: never[]) => T;
 
 // prevent numbers from being passed as entities
@@ -156,4 +157,10 @@ export class ECS {
             this.systems.get(system)!.delete(entity); // no-op if out
         }
     }
+}
+
+export function EcsInjectable<T extends object>() {
+    return (target: T) => {
+        Reflect.defineMetadata("injectable", true, target);
+    };
 }
