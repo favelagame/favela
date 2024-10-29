@@ -21,7 +21,9 @@ class FlyScript extends HondaBehavior {
     }
 
     override onUpdate(): void {
-        const t = Game.time / 1000;
+        const ax = Game.input.activeGamepad?.axes[0];
+        const t =
+            ax != undefined ? ax * (Math.PI / 2) + 3.6 : Game.time / 1000;
         this.transform.translation[0] = 2.5 * Math.sin(t) + 4;
         this.transform.updateMatrix();
     }
@@ -34,7 +36,9 @@ class ExplosionScript extends HondaBehavior {
     }
 
     override onUpdate(): void {
-        const t = Game.time / 1000;
+        const ax = Game.input.activeGamepad?.axes[0];
+        const t =
+            ax != undefined ? ax * (Math.PI / 2) + 3.6 : Game.time / 1000;
         this.transform.scale[0] =
             this.transform.scale[1] =
             this.transform.scale[2] =
@@ -141,5 +145,5 @@ export function setupScene(ecs: ECS) {
         )
     );
     ecs.addComponent(explosion, new CCubeRendererComponent(2, 1.5, 0.3));
-    ecs.addComponent(explosion, new ScriptComponent(ExplosionScript))
+    ecs.addComponent(explosion, new ScriptComponent(ExplosionScript));
 }
