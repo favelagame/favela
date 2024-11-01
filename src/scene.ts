@@ -22,8 +22,7 @@ class FlyScript extends HondaBehavior {
 
     override onUpdate(): void {
         const ax = Game.input.activeGamepad?.axes[0];
-        const t =
-            ax != undefined ? ax * (Math.PI / 2) + 3.6 : Game.time / 1000;
+        const t = ax != undefined ? ax * (Math.PI / 2) + 3.6 : Game.time / 1000;
         this.transform.translation[0] = 2.5 * Math.sin(t) + 4;
         this.transform.updateMatrix();
     }
@@ -37,12 +36,28 @@ class ExplosionScript extends HondaBehavior {
 
     override onUpdate(): void {
         const ax = Game.input.activeGamepad?.axes[0];
-        const t =
-            ax != undefined ? ax * (Math.PI / 2) + 3.6 : Game.time / 1000;
+        const t = ax != undefined ? ax * (Math.PI / 2) + 3.6 : Game.time / 1000;
         this.transform.scale[0] =
             this.transform.scale[1] =
             this.transform.scale[2] =
                 Math.max(Math.tan(t / 2 + Math.PI / 2), 0);
+        this.transform.updateMatrix();
+    }
+}
+
+@EcsInjectable()
+class RotationScript extends HondaBehavior {
+    protected q = quat.fromEuler(0, 0.01, 0, "xyz");
+    protected qd = quat.create();
+
+    constructor(public eid: number, public transform: TransformComponent) {
+        super();
+    }
+
+    override onUpdate(): void {
+        // console.log(this.transform.rotation)
+        quat.mulScalar(this.q, Game.deltaTime / 1000, this.qd);
+        quat.mul(this.transform.rotation, this.q, this.transform.rotation);
         this.transform.updateMatrix();
     }
 }
@@ -83,10 +98,11 @@ export function setupScene(ecs: ECS) {
         tower1,
         new TransformComponent(
             vec3.create(0.7, 2, 0),
-            quat.create(),
+            quat.identity() as Float32Array,
             vec3.create(0.5, 2, 0.5)
         )
     );
+    ecs.addComponent(tower1, new ScriptComponent(RotationScript));
     ecs.addComponent(tower1, new CCubeRendererComponent(0.8, 0.8, 0.8));
 
     const tower2 = ecs.addEntity();
@@ -94,7 +110,7 @@ export function setupScene(ecs: ECS) {
         tower2,
         new TransformComponent(
             vec3.create(-0.7, 2, 0),
-            quat.create(),
+            quat.identity() as Float32Array,
             vec3.create(0.5, 2, 0.5)
         )
     );
@@ -105,7 +121,7 @@ export function setupScene(ecs: ECS) {
         floor,
         new TransformComponent(
             vec3.create(),
-            quat.create(),
+            quat.identity() as Float32Array,
             vec3.create(5, 0.01, 5)
         )
     );
@@ -116,7 +132,7 @@ export function setupScene(ecs: ECS) {
         planeBody,
         new TransformComponent(
             vec3.create(0, 2.5, 0),
-            quat.create(),
+            quat.identity() as Float32Array,
             vec3.create(1, 0.1, 0.1)
         )
     );
@@ -128,7 +144,7 @@ export function setupScene(ecs: ECS) {
         planeWings,
         new TransformComponent(
             vec3.create(0, 2.5, 0),
-            quat.create(),
+            quat.identity() as Float32Array,
             vec3.create(0.2, 0.05, 1)
         )
     );

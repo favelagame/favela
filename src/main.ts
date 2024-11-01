@@ -12,7 +12,7 @@ const ecs = new ECS();
 setupScene(ecs);
 
 function frame(t: number) {
-    Game.input.frame()
+    Game.input.frame();
     Game.deltaTime = t - Game.time;
     Game.time = t;
     Game.cmdEncoder = Game.gpu.device.createCommandEncoder();

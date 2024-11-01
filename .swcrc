@@ -1,0 +1,18 @@
+{
+    "$schema": "https://swc.rs/schema.json",
+    "jsc": {
+        "parser": {
+            "syntax": "typescript",
+            "jsx": false,
+            "decorators": true
+        },
+        "target": "esnext",
+        "keepClassNames": true,
+        "minify": {
+            "format": {
+                "comments": false
+            }
+        }
+    },
+    "minify": false
+}
