@@ -1,4 +1,3 @@
-//TODO: Pointer lock
 //TODO: Make a game-specific input system (aimX, aimY, moveX, moveY, fire, ...)
 //TODO: |-Allow switch between mouse/controller
 
@@ -6,15 +5,19 @@ export class Input {
     public btnMap: Record<string, boolean> = {};
     public mouseDeltaX = 0;
     public mouseDeltaY = 0;
-
     public activeGamepad?: Gamepad;
+
+    protected pointerLocked = false;
 
     public constructor(protected rootElement: HTMLCanvasElement) {
         window.addEventListener("keydown", (ev) => this.onKeyDown(ev));
         window.addEventListener("keyup", (ev) => this.onKeyUp(ev));
-        window.addEventListener("mousedown", (ev) => this.onMouseDown(ev));
-        window.addEventListener("mouseup", (ev) => this.onMouseUp(ev));
-        window.addEventListener("mousemove", (ev) => this.onMouseMove(ev));
+        rootElement.addEventListener("mousedown", (ev) => this.onMouseDown(ev));
+        rootElement.addEventListener("mouseup", (ev) => this.onMouseUp(ev));
+        rootElement.addEventListener("mousemove", (ev) => this.onMouseMove(ev));
+        rootElement.addEventListener("lostpointercapture", () => {
+            this.pointerLocked = false;
+        });
     }
 
     public frame() {
@@ -46,7 +49,17 @@ export class Input {
         this.btnMap[`mouse${ev.button}`] = true;
     }
 
-    protected onMouseDown(ev: MouseEvent) {
+    protected async onMouseDown(ev: MouseEvent) {
+        if (!this.pointerLocked) {
+            try {
+                await this.rootElement.requestPointerLock({
+                    unadjustedMovement: true,
+                });
+                this.pointerLocked = true;
+            } catch (ex) {
+                console.error("Could not get pointer lock", ex);
+            }
+        }
         this.btnMap[`mouse${ev.button}`] = false;
     }
 
