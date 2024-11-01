@@ -1,4 +1,4 @@
-import { mat4, quat, vec3 } from "wgpu-matrix";
+import { quat, vec3 } from "wgpu-matrix";
 
 import {
     ECS,
@@ -13,6 +13,7 @@ import {
     CubeRendererSystem,
 } from "@/honda/systems/cubeRenderer";
 import { HondaBehavior } from "@/honda/systems/script/hondaBehavior.class";
+import { CameraComponent, CameraSystem } from "./honda/systems/cameraSystem";
 
 @EcsInjectable()
 class FlyScript extends HondaBehavior {
@@ -62,36 +63,17 @@ class RotationScript extends HondaBehavior {
     }
 }
 
-function getProjectionMatrix(
-    aspectRatio: number,
-    fovY: number,
-    near: number,
-    far: number
-) {
-    // Perspective projection matrix
-    const proj = mat4.perspective(fovY, aspectRatio, near, far);
-
-    // Camera position and target
-    const eye = vec3.create(1.5, 4, 5);
-    const target = vec3.create(0, 1, 0);
-    const up = vec3.create(0, 1, 0);
-
-    // View matrix (camera transformation)
-    const view = mat4.lookAt(eye, target, up);
-
-    // Return combined view-projection matrix
-    return mat4.multiply(proj, view);
-}
-
 export function setupScene(ecs: ECS) {
-    const aspect = Game.gpu.canvas.width / Game.gpu.canvas.height;
     ecs.addSystem(new ScriptSystem());
+    ecs.addSystem(new CameraSystem());
     ecs.addSystem(
-        new CubeRendererSystem(
-            getProjectionMatrix(aspect, (2 * Math.PI) / 5, 0.01, 100),
-            vec3.normalize(vec3.create(-1, 2, 3))
-        )
+        new CubeRendererSystem(vec3.normalize(vec3.create(-1, 2, 3)))
     );
+
+    const camera = ecs.addEntity();
+    ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));
+    ecs.addComponent(camera, new CameraComponent(70, 0.01, 100));
+    ecs.addComponent(camera, new ScriptComponent(RotationScript));
 
     const tower1 = ecs.addEntity();
     ecs.addComponent(

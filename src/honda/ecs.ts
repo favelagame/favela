@@ -115,6 +115,16 @@ export class ECS {
     }
 
     /**
+     * Get instance of system
+     */
+    public getSystem<T extends System>(sysCtor: Constructor<T>): T {
+        for (const system of this.systems.keys()) {
+            if (system instanceof sysCtor) return system;
+        }
+        throw new Error("No such system");
+    }
+
+    /**
      * This is ordinarily called once per tick (e.g., every frame). It
      * updates all Systems, then destroys any Entities that were marked
      * for removal.

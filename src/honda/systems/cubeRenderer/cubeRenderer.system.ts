@@ -1,4 +1,4 @@
-import { Mat4, Vec3 } from "wgpu-matrix";
+import { Vec3 } from "wgpu-matrix";
 
 import { Game } from "@/honda/state";
 import { TransformComponent } from "@/honda/systems/transform";
@@ -9,6 +9,7 @@ import { CUBE_VERTEX_COUNT, CUBE_VERTEX_DATA } from "./cube.constants";
 
 import code from "@/honda/shaders/basicMesh.wgsl?raw";
 import * as cr from "./cubeRenderer.constants";
+import { CameraSystem } from "../cameraSystem";
 
 export class CubeRendererSystem extends System {
     public componentsRequired = new Set([
@@ -21,13 +22,13 @@ export class CubeRendererSystem extends System {
     protected cubeVbo: GPUBuffer;
     protected uniforms: GPUBuffer;
     protected uniformBindGroup: GPUBindGroup;
+    protected cpuUniforms = new Float32Array(cr.UNIFORM_SIZE);
 
     protected instances: Float32Array;
     protected instanceBuffer: GPUBuffer;
     protected instanceBindGroup: GPUBindGroup;
 
     constructor(
-        protected cameraMatrix: Mat4,
         protected lightDirection: Vec3,
         public readonly maxInstances = 128
     ) {
@@ -84,19 +85,13 @@ export class CubeRendererSystem extends System {
         new Float32Array(this.cubeVbo.getMappedRange()).set(CUBE_VERTEX_DATA);
         this.cubeVbo.unmap();
 
-        // upload uniforms to GPU
-        const uniforms = new Float32Array(cr.UNIFORM_SIZE);
-        uniforms.set(cameraMatrix, cr.UNIFORM_CAMERA_OFFSET);
-        uniforms.set(lightDirection, cr.UNIFORM_SUN_OFFSET);
-
         this.uniforms = Game.gpu.device.createBuffer({
-            size: uniforms.byteLength,
-            usage: GPUBufferUsage.UNIFORM,
-            mappedAtCreation: true,
+            size: this.cpuUniforms.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: false,
         });
 
-        new Float32Array(this.uniforms.getMappedRange()).set(uniforms);
-        this.uniforms.unmap();
+        // this.uniforms.unmap();
 
         this.uniformBindGroup = Game.gpu.device.createBindGroup({
             layout: this.pipeline.getBindGroupLayout(cr.UNIFORM_BIND_GROUP),
@@ -126,6 +121,12 @@ export class CubeRendererSystem extends System {
     }
 
     public update(entities: Set<Entity>): void {
+        // TODO(???): extract uniform code
+        const cs = this.ecs.getSystem(CameraSystem);
+        this.cpuUniforms.set(cs.viewMatrix, cr.UNIFORM_CAMERA_OFFSET);
+        this.cpuUniforms.set(this.lightDirection, cr.UNIFORM_SUN_OFFSET);
+        Game.gpu.device.queue.writeBuffer(this.uniforms, 0, this.cpuUniforms);
+
         let i = 0;
         for (const entity of entities) {
             const transform = this.ecs

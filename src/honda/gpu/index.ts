@@ -33,6 +33,10 @@ export class WebGpu {
         this.ro.observe(canvas, { box: "device-pixel-content-box" });
     }
 
+    public get aspectRatio() {
+        return this.canvas.width / this.canvas.height;
+    }
+
     private handleResize([e]: ResizeObserverEntry[]) {
         this.canvas.width = nn(e.devicePixelContentBoxSize?.[0].inlineSize);
         this.canvas.height = nn(e.devicePixelContentBoxSize?.[0].blockSize);
