@@ -21,14 +21,14 @@ function frame(t: number) {
         .beginRenderPass({
             label: "clear",
             depthStencilAttachment: {
-                view: Game.gpu.depthTexture.createView(), // FIXME(mbabnik) This "leaks" resources? (they get GCd tho afaik)
+                view: Game.gpu.depthTextureView,
                 depthLoadOp: "clear",
                 depthStoreOp: "store",
                 depthClearValue: 1,
             },
             colorAttachments: [
                 {
-                    view: Game.gpu.ctx.getCurrentTexture().createView(),
+                    view: Game.gpu.canvasTextureView,
                     loadOp: "clear",
                     storeOp: "store",
                     clearValue: [0.8, 0.8, 1, 1],

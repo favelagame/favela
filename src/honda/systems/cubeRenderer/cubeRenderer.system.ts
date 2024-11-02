@@ -10,6 +10,9 @@ import { CUBE_VERTEX_COUNT, CUBE_VERTEX_DATA } from "./cube.constants";
 import code from "@/honda/shaders/basicMesh.wgsl?raw";
 import * as cr from "./cubeRenderer.constants";
 import { CameraSystem } from "../cameraSystem";
+import { makeShaderDataDefinitions, makeStructuredView } from "webgpu-utils";
+
+const SHADER_DEFS = makeShaderDataDefinitions(code);
 
 export class CubeRendererSystem extends System {
     public componentsRequired = new Set([
@@ -20,9 +23,10 @@ export class CubeRendererSystem extends System {
     protected pipeline: GPURenderPipeline;
     protected module: GPUShaderModule;
     protected cubeVbo: GPUBuffer;
-    protected uniforms: GPUBuffer;
+
+    protected uniforms = makeStructuredView(SHADER_DEFS.uniforms["uniforms"]);
+    protected uniformsBuffer: GPUBuffer;
     protected uniformBindGroup: GPUBindGroup;
-    protected cpuUniforms = new Float32Array(cr.UNIFORM_SIZE);
 
     protected instances: Float32Array;
     protected instanceBuffer: GPUBuffer;
@@ -85,8 +89,8 @@ export class CubeRendererSystem extends System {
         new Float32Array(this.cubeVbo.getMappedRange()).set(CUBE_VERTEX_DATA);
         this.cubeVbo.unmap();
 
-        this.uniforms = Game.gpu.device.createBuffer({
-            size: this.cpuUniforms.byteLength,
+        this.uniformsBuffer = Game.gpu.device.createBuffer({
+            size: this.uniforms.arrayBuffer.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
             mappedAtCreation: false,
         });
@@ -98,7 +102,7 @@ export class CubeRendererSystem extends System {
             entries: [
                 {
                     binding: cr.UNIFORM_BIND_GROUP_BINDING,
-                    resource: { buffer: this.uniforms },
+                    resource: { buffer: this.uniformsBuffer },
                 },
             ],
         });
@@ -123,9 +127,17 @@ export class CubeRendererSystem extends System {
     public update(entities: Set<Entity>): void {
         // TODO(???): extract uniform code
         const cs = this.ecs.getSystem(CameraSystem);
-        this.cpuUniforms.set(cs.viewMatrix, cr.UNIFORM_CAMERA_OFFSET);
-        this.cpuUniforms.set(this.lightDirection, cr.UNIFORM_SUN_OFFSET);
-        Game.gpu.device.queue.writeBuffer(this.uniforms, 0, this.cpuUniforms);
+        this.uniforms.set({
+            viewProjection: cs.viewMatrix,
+            sunDirection: this.lightDirection,
+            deltaTime: Game.deltaTime,
+            time: Game.time,
+        });
+        Game.gpu.device.queue.writeBuffer(
+            this.uniformsBuffer,
+            0,
+            this.uniforms.arrayBuffer
+        );
 
         let i = 0;
         for (const entity of entities) {
@@ -152,11 +164,10 @@ export class CubeRendererSystem extends System {
             i * cr.INSTANCE_SIZE
         );
 
-        cr.RENDER_PASS_DESCRIPTOR.colorAttachments[0].view = Game.gpu.ctx
-            .getCurrentTexture()
-            .createView();
+        cr.RENDER_PASS_DESCRIPTOR.colorAttachments[0].view =
+            Game.gpu.canvasTextureView;
         cr.RENDER_PASS_DESCRIPTOR.depthStencilAttachment.view =
-            Game.gpu.depthTexture.createView();
+            Game.gpu.depthTextureView;
 
         const pass = Game.cmdEncoder.beginRenderPass(cr.RENDER_PASS_DESCRIPTOR);
 

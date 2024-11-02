@@ -7,8 +7,13 @@ function nn<T>(value: T | null | undefined, message?: string): T {
 export class WebGpu {
     private ro: ResizeObserver;
 
-    public pFormat = navigator.gpu.getPreferredCanvasFormat();
+    public depthTextureView: GPUTextureView;
+    public canvasTextureView: GPUTextureView;
+
     public depthTexture: GPUTexture;
+    public canvasTexture: GPUTexture;
+
+    public pFormat = navigator.gpu.getPreferredCanvasFormat();
 
     constructor(
         public readonly adapter: GPUAdapter,
@@ -22,11 +27,14 @@ export class WebGpu {
         console.table(device.limits);
         console.groupEnd();
 
+        this.canvasTexture = this.ctx.getCurrentTexture();
+        this.canvasTextureView = this.canvasTexture.createView();
         this.depthTexture = this.device.createTexture({
             size: [canvas.width, canvas.height, 1],
             format: "depth24plus",
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
         });
+        this.depthTextureView = this.depthTexture.createView();
 
         this.ro = new ResizeObserver((e) => this.handleResize(e));
         // FIXME: Safari (matter reference) doesn't support this.
@@ -47,6 +55,12 @@ export class WebGpu {
             format: "depth24plus",
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
         });
+        this.depthTextureView = this.depthTexture.createView();
+        if (this.canvasTexture != this.ctx.getCurrentTexture()) {
+            console.warn("Canvas texture changed.");
+            this.canvasTexture = this.ctx.getCurrentTexture();
+            this.canvasTextureView = this.canvasTexture.createView();
+        }
     }
 
     static async obtainForCanvas(canvas: HTMLCanvasElement) {

@@ -1,5 +1,4 @@
 import { quat, vec3 } from "wgpu-matrix";
-
 import {
     ECS,
     Game,
@@ -7,13 +6,12 @@ import {
     ScriptSystem,
     ScriptComponent,
     EcsInjectable,
-} from "@/honda/core";
-import {
     CCubeRendererComponent,
     CubeRendererSystem,
-} from "@/honda/systems/cubeRenderer";
-import { HondaBehavior } from "@/honda/systems/script/hondaBehavior.class";
-import { CameraComponent, CameraSystem } from "./honda/systems/cameraSystem";
+    HondaBehavior,
+    CameraComponent,
+    CameraSystem,
+} from "@/honda/core";
 
 @EcsInjectable()
 class FlyScript extends HondaBehavior {
@@ -73,7 +71,7 @@ export function setupScene(ecs: ECS) {
     const camera = ecs.addEntity();
     ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));
     ecs.addComponent(camera, new CameraComponent(70, 0.01, 100));
-    ecs.addComponent(camera, new ScriptComponent(RotationScript));
+    // ecs.addComponent(camera, new ScriptComponent(RotationScript));
 
     const tower1 = ecs.addEntity();
     ecs.addComponent(
