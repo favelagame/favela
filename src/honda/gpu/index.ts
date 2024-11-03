@@ -56,8 +56,11 @@ export class WebGpu {
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
         });
         this.depthTextureView = this.depthTexture.createView();
+    }
+
+    public frameStart() {
+        // Chrome seems to pass a "new?" frame every time, firefox reuses the same one
         if (this.canvasTexture != this.ctx.getCurrentTexture()) {
-            console.warn("Canvas texture changed.");
             this.canvasTexture = this.ctx.getCurrentTexture();
             this.canvasTextureView = this.canvasTexture.createView();
         }

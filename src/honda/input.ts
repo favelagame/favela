@@ -49,16 +49,27 @@ export class Input {
         this.btnMap[`mouse${ev.button}`] = true;
     }
 
-    protected async onMouseDown(ev: MouseEvent) {
-        if (!this.pointerLocked) {
-            try {
+    protected async lockPointer(unadjusted = true) {
+        try {
+            if (unadjusted)
                 await this.rootElement.requestPointerLock({
                     unadjustedMovement: true,
                 });
-                this.pointerLocked = true;
-            } catch (ex) {
-                console.error("Could not get pointer lock", ex);
-            }
+            else await this.rootElement.requestPointerLock();
+            this.pointerLocked = true;
+        } catch (ex) {
+            if (unadjusted && ex instanceof DOMException) {
+                console.warn(
+                    "unadjustedMovement pointerLock failed, falling back"
+                );
+                this.lockPointer(false);
+            } else console.error("Could not get pointer lock");
+        }
+    }
+
+    protected async onMouseDown(ev: MouseEvent) {
+        if (!this.pointerLocked) {
+            this.lockPointer();
         }
         this.btnMap[`mouse${ev.button}`] = false;
     }

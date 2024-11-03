@@ -17,6 +17,7 @@ function frame(t: number) {
     Game.input.frame();
     Game.deltaTime = t - Game.time;
     Game.time = t;
+    Game.gpu.frameStart();
     Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
 
     Game.cmdEncoder

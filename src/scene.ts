@@ -11,7 +11,9 @@ import {
     HondaBehavior,
     CameraComponent,
     CameraSystem,
+    Entity,
 } from "@/honda/core";
+import { clamp, PI_2 } from "./honda/util/math";
 
 @EcsInjectable()
 class FlyScript extends HondaBehavior {
@@ -91,6 +93,64 @@ class SpawnerScript extends HondaBehavior {
     }
 }
 
+const sens = 0.005;
+
+@EcsInjectable()
+class FlyCameraScript extends HondaBehavior {
+    protected pitch = 0;
+    protected yaw = 0;
+
+    constructor(
+        protected eid: number,
+        protected transform: TransformComponent
+    ) {
+        super();
+    }
+
+    protected moveBaseVec = vec3.create(0, 0, 0);
+
+    onUpdate(): void {
+        this.pitch = clamp(
+            -PI_2,
+            this.pitch + Game.input.mouseDeltaY * -sens,
+            PI_2
+        );
+        this.yaw += Game.input.mouseDeltaX * -sens; // maybe modulo this one?
+        quat.fromEuler(this.pitch, this.yaw, 0, "yxz", this.transform.rotation);
+
+        this.moveBaseVec[0] =
+            (Game.input.btnMap["KeyD"] ? 1 : 0) +
+            (Game.input.btnMap["KeyA"] ? -1 : 0);
+        this.moveBaseVec[1] = 0;
+        this.moveBaseVec[2] =
+            (Game.input.btnMap["KeyW"] ? -1 : 0) +
+            (Game.input.btnMap["KeyS"] ? 1 : 0);
+
+        if (this.moveBaseVec[0] != 0 || this.moveBaseVec[2] != 0) {
+            vec3.normalize(this.moveBaseVec, this.moveBaseVec);
+            vec3.mulScalar(
+                this.moveBaseVec,
+                Game.deltaTime / 1000,
+                this.moveBaseVec
+            );
+
+            vec3.transformQuat(
+                this.moveBaseVec,
+                this.transform.rotation,
+                this.moveBaseVec
+            );
+
+            vec3.add(
+                this.transform.translation,
+                this.moveBaseVec,
+                this.transform.translation
+            );
+        }
+
+        this.transform.updateMatrix();
+    }
+}
+
 export function setupScene(ecs: ECS) {
     ecs.addSystem(new ScriptSystem());
     ecs.addSystem(new CameraSystem());
@@ -101,6 +161,7 @@ export function setupScene(ecs: ECS) {
     const camera = ecs.addEntity();
     ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));
     ecs.addComponent(camera, new CameraComponent(70, 0.01, 100));
+    ecs.addComponent(camera, new ScriptComponent(FlyCameraScript));
     // ecs.addComponent(camera, new ScriptComponent(RotationScript));
 
     const tower1 = ecs.addEntity();
