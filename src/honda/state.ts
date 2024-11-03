@@ -1,8 +1,9 @@
 import { mat4 } from "wgpu-matrix";
+
 import type { WebGpu } from "./gpu";
 import type { Input } from "./input";
+import type { ECS } from "./ecs";
 import { Perf } from "./util/perf";
-import { ECS } from "./ecs";
 
 export const Game = {
     ecs: null! as ECS,

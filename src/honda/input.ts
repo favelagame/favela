@@ -51,11 +51,13 @@ export class Input {
 
     protected async lockPointer(unadjusted = true) {
         try {
-            if (unadjusted)
+            if (unadjusted) {
                 await this.rootElement.requestPointerLock({
                     unadjustedMovement: true,
                 });
-            else await this.rootElement.requestPointerLock();
+            } else {
+                await this.rootElement.requestPointerLock();
+            }
             this.pointerLocked = true;
         } catch (ex) {
             if (unadjusted && ex instanceof DOMException) {

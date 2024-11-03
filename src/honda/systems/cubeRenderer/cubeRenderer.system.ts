@@ -1,16 +1,18 @@
 import { Vec3 } from "wgpu-matrix";
+import { makeShaderDataDefinitions, makeStructuredView } from "webgpu-utils";
 
-import { Game } from "@/honda/state";
-import { TransformComponent } from "@/honda/systems/transform";
-import { Entity, System } from "@/honda/ecs";
+import {
+    TransformComponent,
+    Game,
+    Entity,
+    System,
+    CameraSystem,
+} from "@/honda/core";
+import code from "@/honda/shaders/basicMesh.wgsl?raw";
 
 import { CubeComponent } from "./cubeRenderer.component";
 import { CUBE_VERTEX_COUNT, CUBE_VERTEX_DATA } from "./cube.constants";
-
-import code from "@/honda/shaders/basicMesh.wgsl?raw";
 import * as cr from "./cubeRenderer.constants";
-import { CameraSystem } from "../cameraSystem";
-import { makeShaderDataDefinitions, makeStructuredView } from "webgpu-utils";
 
 const SHADER_DEFS = makeShaderDataDefinitions(code);
 

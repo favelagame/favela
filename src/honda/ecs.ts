@@ -133,7 +133,7 @@ export class ECS {
         // Update all systems. (Later, we'll add a way to specify the
         // update order.)
         for (const [system, entities] of this.systems.entries()) {
-            Game.perf.measure(`update:${(system as any).constructor.name}`);
+            Game.perf.measure(`update:${system.constructor.name}`);
             system.update(entities);
             Game.perf.measureEnd();
         }

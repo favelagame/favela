@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@types/node": "^22.7.7",
+    "eslint-plugin-paths": "^1.1.0",
     "reflect-metadata": "^0.2.2",
     "stats.js": "^0.17.0",
     "webgpu-utils": "^1.9.3",

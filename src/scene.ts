@@ -1,18 +1,18 @@
-import { quat, vec3 } from "wgpu-matrix";
 import {
-    ECS,
-    Game,
-    TransformComponent,
-    ScriptSystem,
-    ScriptComponent,
-    EcsInjectable,
-    CubeComponent,
-    CubeRendererSystem,
-    HondaBehavior,
     CameraComponent,
     CameraSystem,
-    Entity,
+    CubeComponent,
+    CubeRendererSystem,
+    ECS,
+    EcsInjectable,
+    Game,
+    HondaBehavior,
+    ScriptComponent,
+    ScriptSystem,
+    TransformComponent,
 } from "@/honda/core";
+import { quat, vec3 } from "wgpu-matrix";
+
 import { clamp, PI_2 } from "./honda/util/math";
 
 @EcsInjectable()
@@ -74,8 +74,8 @@ class SpawnerScript extends HondaBehavior {
 
     onUpdate(): void {
         const t = Game.time;
-        const nEnt = this.ecs.addEntity();
-        this.ecs.addComponent(
+        const nEnt = Game.ecs.addEntity();
+        Game.ecs.addComponent(
             nEnt,
             new TransformComponent(
                 vec3.create(
@@ -88,8 +88,8 @@ class SpawnerScript extends HondaBehavior {
             )
         );
 
-        this.ecs.addComponent(nEnt, new CubeComponent(1, 1, 1));
-        if (t > this.suicide) this.ecs.removeEntity(this.eid);
+        Game.ecs.addComponent(nEnt, new CubeComponent(1, 1, 1));
+        if (t > this.suicide) Game.ecs.removeEntity(this.eid);
     }
 }
 
@@ -97,7 +97,9 @@ const sens = 0.005;
 
 @EcsInjectable()
 class FlyCameraScript extends HondaBehavior {
+    protected moveBaseVec = vec3.create(0, 0, 0);
     protected pitch = 0;
+
     protected yaw = 0;
 
     constructor(
@@ -106,8 +108,6 @@ class FlyCameraScript extends HondaBehavior {
     ) {
         super();
     }
-
-    protected moveBaseVec = vec3.create(0, 0, 0);
 
     onUpdate(): void {
         this.pitch = clamp(

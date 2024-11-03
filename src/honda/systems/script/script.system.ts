@@ -27,7 +27,6 @@ export class ScriptSystem extends System {
                         x == ECS ? (this.ecs as never) : components.get(x)
                     );
                 sc.instance = new sc.script(eid, ...args);
-                (sc.instance as any).ecs = this.ecs;
             }
             sc.instance.onUpdate();
         });

@@ -1,4 +1,5 @@
 import "reflect-metadata";
+
 import { WebGpu } from "@/honda/gpu";
 import { ECS, Game } from "@/honda/core";
 import { setupScene } from "./scene";

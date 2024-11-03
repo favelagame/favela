@@ -1,7 +1,7 @@
-import { Entity, System } from "@/honda/ecs";
-import { CameraComponent } from "./camera.component";
-import { TransformComponent } from "../transform";
 import { mat4, quat, vec3 } from "wgpu-matrix";
+
+import { Entity, System, TransformComponent } from "@/honda/core";
+import { CameraComponent } from "./camera.component";
 
 export class CameraSystem extends System {
     public componentsRequired = new Set([TransformComponent, CameraComponent]);
@@ -26,7 +26,6 @@ export class CameraSystem extends System {
 
             // V = P * C^-1
             mat4.multiply(cc.matrix, this.cameraInverse, this.viewMatrix);
-
         }
     }
 }

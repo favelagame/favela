@@ -1,4 +1,4 @@
-import { Component, EcsInjectable, Entity } from "@/honda/ecs";
+import { Component, EcsInjectable } from "@/honda/core";
 import { HondaBehavior } from "./hondaBehavior.class";
 
 type ScriptCtor<T = unknown> = new (eid: number, ...otherArgs: never[]) => T;
