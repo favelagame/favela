@@ -5,13 +5,22 @@ import { ECS, Game } from "@/honda/core";
 import { setupScene } from "./scene";
 import { Input } from "./honda/input";
 import { perfRenderer } from "./honda/util/perf";
+import { setError, setStatus } from "./honda/util/status";
 
 const canvas = document.querySelector("canvas")!;
-Game.gpu = await WebGpu.obtainForCanvas(canvas);
+try {
+    Game.gpu = await WebGpu.obtainForCanvas(canvas);
+} catch (e) {
+    setError((e as object).toString());
+    throw ":(";
+}
+
 Game.input = new Input(canvas);
 const ecs = new ECS();
 Game.ecs = ecs;
+setStatus('loading assets');
 setupScene(ecs);
+setStatus(undefined);
 
 function frame(t: number) {
     Game.perf.startFrame();

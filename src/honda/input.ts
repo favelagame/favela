@@ -15,8 +15,11 @@ export class Input {
         rootElement.addEventListener("mousedown", (ev) => this.onMouseDown(ev));
         rootElement.addEventListener("mouseup", (ev) => this.onMouseUp(ev));
         rootElement.addEventListener("mousemove", (ev) => this.onMouseMove(ev));
-        rootElement.addEventListener("lostpointercapture", () => {
-            this.pointerLocked = false;
+        document.addEventListener("pointerlockchange", () => {
+            if (!document.pointerLockElement) {
+                console.log("lost capture");
+                this.pointerLocked = false;
+            }
         });
     }
 
@@ -77,7 +80,9 @@ export class Input {
     }
 
     protected onMouseMove(ev: MouseEvent) {
-        this.mouseDeltaX += ev.movementX;
-        this.mouseDeltaY += ev.movementY;
+        if (this.pointerLocked) {
+            this.mouseDeltaX += ev.movementX;
+            this.mouseDeltaY += ev.movementY;
+        }
     }
 }

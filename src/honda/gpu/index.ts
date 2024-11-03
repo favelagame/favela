@@ -70,10 +70,17 @@ export class WebGpu {
         const adapter = nn(
             await navigator.gpu.requestAdapter({
                 powerPreference: "high-performance",
-            })
+            }),
+            "Your browser doesn't support WebGPU"
         );
-        const device = nn(await adapter.requestDevice());
-        const wg = nn(canvas.getContext("webgpu"));
+        const device = nn(
+            await adapter.requestDevice(),
+            "Couldn't obtain WebGPU device"
+        );
+        const wg = nn(
+            canvas.getContext("webgpu"),
+            "Couldn't obtain WebGPU context"
+        );
 
         canvas.width = document.body.clientWidth;
         canvas.height = document.body.clientHeight;

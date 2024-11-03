@@ -15,10 +15,15 @@ canvas {
     height: 100%;
 }
 
-#perf {
+#perf,
+#status {
     user-select: none;
     pointer-events: none;
+    font-family: monospace;
     position: absolute;
+}
+
+#perf {
     left: 0;
     top: 0;
     background-color: #0002;
@@ -26,6 +31,33 @@ canvas {
 
 #perf pre {
     margin: 0px;
-    font-family: monospace;
     color: white;
+}
+
+.hide {
+    display: none;
+}
+
+#status {
+    right: 0;
+    bottom: 0;
+    margin: 0px;
+    color: white;
+    background-color: black;
+    padding: 0.5rem;
+    font-size: 2rem;
+}
+
+#error {
+    font-family: monospace;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0px;
+    color: white;
+    background-color: rgb(192, 0, 0);
+    padding: 0.5rem;
+    font-size: 1rem;
+    outline: 1px solid white;
 }

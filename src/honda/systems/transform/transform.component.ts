@@ -22,10 +22,7 @@ export class TransformComponent extends Component {
         mat4.multiply(this._matrix, mat4.fromQuat(this.rotation), this._matrix);
         mat4.scale(this._matrix, this.scale, this._matrix);
     }
-
-    // TODO(mbabnik): We also need a matrix somewhere, to transform model normals
-    // TODO(mbabnik): (Maybe in the renderer, maybe in the vertex shader?)
-    // TODO(mbabnik): This will become an even bigger pain if we do normal mapping
+    
     public get matrix() {
         return this._matrix;
     }
