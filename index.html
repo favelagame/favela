@@ -1,13 +1,22 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="/src/style.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Favela</title>
-  </head>
-  <body>
-    <canvas></canvas>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="/src/style.css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Favela</title>
+    </head>
+    <body>
+        <canvas></canvas>
+        <div id="perf">
+            <pre>
+Framerate:   <span id="fps">  0.0</span> 
+Frametime: <span id="mspf">   0.00</span> ms
+Entities: <span id="ents">   0</span>
+---------------------------------------
+</pre>
+            <pre id="measured"></pre>
+        </div>
+        <script type="module" src="/src/main.ts"></script>
+    </body>
 </html>

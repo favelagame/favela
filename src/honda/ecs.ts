@@ -1,8 +1,8 @@
 import "reflect-metadata";
+import { Game } from "./state";
 type Constructor<T = unknown> = new (...args: never[]) => T;
 
-// prevent numbers from being passed as entities
-export type Entity = number & { " brand": "ent" };
+export type Entity = number;
 
 export abstract class Component {}
 
@@ -133,7 +133,9 @@ export class ECS {
         // Update all systems. (Later, we'll add a way to specify the
         // update order.)
         for (const [system, entities] of this.systems.entries()) {
+            Game.perf.measure(`update:${(system as any).constructor.name}`);
             system.update(entities);
+            Game.perf.measureEnd();
         }
 
         // Remove any entities that were marked for deletion during the
@@ -148,6 +150,10 @@ export class ECS {
         for (const entities of this.systems.values()) {
             entities.delete(entity); // no-op if doesn't have it
         }
+    }
+
+    public get entityCount() {
+        return this.entities.size;
     }
 
     private checkE(entity: Entity): void {

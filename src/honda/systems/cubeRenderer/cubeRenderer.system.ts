@@ -4,7 +4,7 @@ import { Game } from "@/honda/state";
 import { TransformComponent } from "@/honda/systems/transform";
 import { Entity, System } from "@/honda/ecs";
 
-import { CCubeRendererComponent } from "./cubeRenderer.component";
+import { CubeComponent } from "./cubeRenderer.component";
 import { CUBE_VERTEX_COUNT, CUBE_VERTEX_DATA } from "./cube.constants";
 
 import code from "@/honda/shaders/basicMesh.wgsl?raw";
@@ -17,7 +17,7 @@ const SHADER_DEFS = makeShaderDataDefinitions(code);
 export class CubeRendererSystem extends System {
     public componentsRequired = new Set([
         TransformComponent,
-        CCubeRendererComponent,
+        CubeComponent,
     ]);
 
     protected pipeline: GPURenderPipeline;
@@ -34,7 +34,7 @@ export class CubeRendererSystem extends System {
 
     constructor(
         protected lightDirection: Vec3,
-        public readonly maxInstances = 128
+        public readonly maxInstances = 16384
     ) {
         super();
 
@@ -95,8 +95,6 @@ export class CubeRendererSystem extends System {
             mappedAtCreation: false,
         });
 
-        // this.uniforms.unmap();
-
         this.uniformBindGroup = Game.gpu.device.createBindGroup({
             layout: this.pipeline.getBindGroupLayout(cr.UNIFORM_BIND_GROUP),
             entries: [
@@ -146,7 +144,7 @@ export class CubeRendererSystem extends System {
                 .get(TransformComponent);
             const cubeRenderer = this.ecs
                 .getComponents(entity)
-                .get(CCubeRendererComponent);
+                .get(CubeComponent);
 
             this.instances.set(transform.matrix, i * cr.INSTANCE_SIZE);
             this.instances.set(

@@ -2,7 +2,6 @@ import { System, Entity, ComponentClass, ECS } from "@/honda/ecs";
 import { ScriptComponent } from "./script.component";
 import { HondaBehavior } from "./hondaBehavior.class";
 
-
 export class ScriptSystem extends System {
     public componentsRequired = new Set([ScriptComponent]);
 
@@ -19,12 +18,16 @@ export class ScriptSystem extends System {
                     ctor
                 ) as unknown[];
 
-                console.assert(deps[0] === Number, 'EID wasnt first');
+                console.assert(deps[0] === Number, "EID wasnt first", deps);
                 const components = this.ecs.getComponents(eid);
 
-                const args = (deps as ComponentClass<never>[]).slice(1).map((x) => x == ECS ? (this.ecs as never) : components.get(x)
-                );
+                const args = (deps as ComponentClass<never>[])
+                    .slice(1)
+                    .map((x) =>
+                        x == ECS ? (this.ecs as never) : components.get(x)
+                    );
                 sc.instance = new sc.script(eid, ...args);
+                (sc.instance as any).ecs = this.ecs;
             }
             sc.instance.onUpdate();
         });

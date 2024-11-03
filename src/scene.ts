@@ -6,7 +6,7 @@ import {
     ScriptSystem,
     ScriptComponent,
     EcsInjectable,
-    CCubeRendererComponent,
+    CubeComponent,
     CubeRendererSystem,
     HondaBehavior,
     CameraComponent,
@@ -61,6 +61,36 @@ class RotationScript extends HondaBehavior {
     }
 }
 
+@EcsInjectable()
+class SpawnerScript extends HondaBehavior {
+    protected suicide = 0;
+
+    constructor(protected eid: number) {
+        super();
+        this.suicide = Game.time + 50000;
+    }
+
+    onUpdate(): void {
+        const t = Game.time;
+        const nEnt = this.ecs.addEntity();
+        this.ecs.addComponent(
+            nEnt,
+            new TransformComponent(
+                vec3.create(
+                    (Math.random() - 0.5) * 10,
+                    0.1,
+                    (Math.random() - 0.5) * 10
+                ),
+                undefined,
+                vec3.create(0.01, 0.4, 0.01)
+            )
+        );
+
+        this.ecs.addComponent(nEnt, new CubeComponent(1, 1, 1));
+        if (t > this.suicide) this.ecs.removeEntity(this.eid);
+    }
+}
+
 export function setupScene(ecs: ECS) {
     ecs.addSystem(new ScriptSystem());
     ecs.addSystem(new CameraSystem());
@@ -83,7 +113,7 @@ export function setupScene(ecs: ECS) {
         )
     );
     ecs.addComponent(tower1, new ScriptComponent(RotationScript));
-    ecs.addComponent(tower1, new CCubeRendererComponent(0.8, 0.8, 0.8));
+    ecs.addComponent(tower1, new CubeComponent(0.8, 0.8, 0.8));
 
     const tower2 = ecs.addEntity();
     ecs.addComponent(
@@ -94,7 +124,7 @@ export function setupScene(ecs: ECS) {
             vec3.create(0.5, 2, 0.5)
         )
     );
-    ecs.addComponent(tower2, new CCubeRendererComponent(0.8, 0.8, 0.8));
+    ecs.addComponent(tower2, new CubeComponent(0.8, 0.8, 0.8));
 
     const floor = ecs.addEntity();
     ecs.addComponent(
@@ -105,7 +135,7 @@ export function setupScene(ecs: ECS) {
             vec3.create(5, 0.01, 5)
         )
     );
-    ecs.addComponent(floor, new CCubeRendererComponent(0.8, 0.8, 0.8));
+    ecs.addComponent(floor, new CubeComponent(0.8, 0.8, 0.8));
 
     const planeBody = ecs.addEntity();
     ecs.addComponent(
@@ -116,7 +146,7 @@ export function setupScene(ecs: ECS) {
             vec3.create(1, 0.1, 0.1)
         )
     );
-    ecs.addComponent(planeBody, new CCubeRendererComponent(1.5, 1.5, 1.5));
+    ecs.addComponent(planeBody, new CubeComponent(1.5, 1.5, 1.5));
     ecs.addComponent(planeBody, new ScriptComponent(FlyScript));
 
     const planeWings = ecs.addEntity();
@@ -128,7 +158,7 @@ export function setupScene(ecs: ECS) {
             vec3.create(0.2, 0.05, 1)
         )
     );
-    ecs.addComponent(planeWings, new CCubeRendererComponent(1.5, 1.5, 1.5));
+    ecs.addComponent(planeWings, new CubeComponent(1.5, 1.5, 1.5));
     ecs.addComponent(planeWings, new ScriptComponent(FlyScript));
 
     const explosion = ecs.addEntity();
@@ -140,6 +170,9 @@ export function setupScene(ecs: ECS) {
             vec3.create(1, 1, 1)
         )
     );
-    ecs.addComponent(explosion, new CCubeRendererComponent(2, 1.5, 0.3));
+    ecs.addComponent(explosion, new CubeComponent(2, 1.5, 0.3));
     ecs.addComponent(explosion, new ScriptComponent(ExplosionScript));
+
+    const spawner = ecs.addEntity();
+    ecs.addComponent(spawner, new ScriptComponent(SpawnerScript));
 }

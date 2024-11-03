@@ -3,15 +3,17 @@ import { WebGpu } from "@/honda/gpu";
 import { ECS, Game } from "@/honda/core";
 import { setupScene } from "./scene";
 import { Input } from "./honda/input";
+import { perfRenderer } from "./honda/util/perf";
 
 const canvas = document.querySelector("canvas")!;
 Game.gpu = await WebGpu.obtainForCanvas(canvas);
 Game.input = new Input(canvas);
-
 const ecs = new ECS();
+Game.ecs = ecs;
 setupScene(ecs);
 
 function frame(t: number) {
+    Game.perf.startFrame();
     Game.input.frame();
     Game.deltaTime = t - Game.time;
     Game.time = t;
@@ -31,7 +33,7 @@ function frame(t: number) {
                     view: Game.gpu.canvasTextureView,
                     loadOp: "clear",
                     storeOp: "store",
-                    clearValue: [0.8, 0.8, 1, 1],
+                    clearValue: [0.4, 0.7, 1, 1],
                 },
             ],
         })
@@ -41,8 +43,20 @@ function frame(t: number) {
     Game.input.endFrame();
 
     Game.gpu.device.queue.submit([Game.cmdEncoder.finish()]);
+    Game.perf.stopFrame();
     requestAnimationFrame(frame);
 }
+
+const $ = document.querySelector.bind(document);
+setInterval(
+    perfRenderer(
+        $<HTMLSpanElement>("#fps")!,
+        $<HTMLSpanElement>("#mspf")!,
+        $<HTMLSpanElement>("#ents")!,
+        $<HTMLPreElement>("#measured")!
+    ),
+    500
+);
 
 requestAnimationFrame(frame);
 Game.time = performance.now(); //get inital timestamp so delta isnt broken
