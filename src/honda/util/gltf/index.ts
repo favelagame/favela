@@ -42,7 +42,23 @@ export interface MeshDataV1 {
     uvBuffer: FavelaAccesor<Float32Array, "VEC2">;
 }
 
+export interface TexturedMeshDataV1 {
+    name: string;
+    indexBuffer: FavelaAccesor<Uint16Array, "SCALAR">;
+    posBuffer: FavelaAccesor<Float32Array, "VEC3">;
+    normBuffer: FavelaAccesor<Float32Array, "VEC3">;
+    uvBuffer: FavelaAccesor<Float32Array, "VEC2">;
+    baseTex: TextureV1;
+}
+
+export interface TextureV1 {
+    samplerDescriptor: GPUSamplerDescriptor;
+    image: ImageBitmap;
+}
+
 export class Gltf {
+    public static readonly supportedExtensions: string[] = ["EXT_texture_webp"];
+
     static readonly COMP_TYPE_TO_CTOR: Record<
         TG.TComponentType,
         TTypedArrayCtor<TypedArrays>
@@ -54,6 +70,30 @@ export class Gltf {
         5125: Uint32Array,
         5126: Float32Array,
     };
+
+    static readonly SAMPLER_TO_WGPU: Record<TG.TWrap, GPUAddressMode> = {
+        33071: "clamp-to-edge",
+        33648: "mirror-repeat",
+        10497: "repeat",
+    };
+
+    static getWebGpuSamplerFilter(
+        n: TG.TFilterMag | TG.TFilterMin
+    ): GPUFilterMode {
+        switch (n) {
+            case 9728:
+                return "nearest";
+            case 9729:
+                return "linear";
+            default:
+                console.warn(
+                    "Unsupported sampler filter mode:",
+                    n,
+                    "defaulting to linear"
+                );
+                return "linear";
+        }
+    }
 
     public json: TG.IRoot;
     protected bin: ArrayBufferView;
@@ -88,6 +128,32 @@ export class Gltf {
         if (!(jsonView && binView)) throw new Error("Missing chunk(s)");
         this.json = JSON.parse(new TextDecoder().decode(jsonView));
         this.bin = binView;
+
+        this.checkExt();
+    }
+
+    protected checkExt() {
+        const unsupportedRequired =
+            this.json?.extensionsRequired?.filter(
+                (ext) => !Gltf.supportedExtensions.includes(ext)
+            ) ?? [];
+        const unsupportedUsed =
+            this.json?.extensionsRequired?.filter(
+                (ext) => !Gltf.supportedExtensions.includes(ext)
+            ) ?? [];
+
+        if (unsupportedRequired.length > 0) {
+            console.error(
+                "Unsupported extensions required:",
+                unsupportedRequired.join(", ")
+            );
+        }
+        if (unsupportedUsed.length > 0) {
+            console.warn(
+                "Unsupported extensions used:",
+                unsupportedUsed.join(", ")
+            );
+        }
     }
 
     public static async fromUrl(url: string) {
@@ -193,8 +259,17 @@ export class Gltf {
             throw new Error("Unsupported: missing attributes");
         }
 
+        const indices = gPrimitive.indices;
+        if (indices === undefined) {
+            throw new Error("Unsupported: non-indexed geometry");
+        }
+
+        if (gPrimitive.mode !== undefined && gPrimitive.mode != 4) {
+            throw new Error("Unsupported: non-triagle-list geometry");
+        }
+
         const indexBuffer = this.getAccessorAndAssertType(
-                gPrimitive.indices,
+                indices,
                 "SCALAR",
                 Uint16Array
             ),
@@ -221,5 +296,153 @@ export class Gltf {
             normBuffer,
             uvBuffer,
         };
+    }
+
+    public getTexturedMeshV1(index: number): TexturedMeshDataV1 {
+        const gMesh = this.json.meshes[index];
+        if (!gMesh) throw new Error("Mesh index out of bounds");
+        if (gMesh.primitives.length > 1) {
+            throw new Error("Unsupported: multiple primitives in mesh");
+        }
+
+        const [gPrimitive] = gMesh.primitives;
+
+        if (
+            !("POSITION" in gPrimitive.attributes) ||
+            !("NORMAL" in gPrimitive.attributes) ||
+            !("TEXCOORD_0" in gPrimitive.attributes)
+        ) {
+            throw new Error("Unsupported: missing attributes");
+        }
+
+        const indices = gPrimitive.indices;
+        if (indices === undefined) {
+            throw new Error("Unsupported: non-indexed geometry");
+        }
+
+        if (gPrimitive.mode !== undefined && gPrimitive.mode != 4) {
+            throw new Error("Unsupported: non-triagle-list geometry");
+        }
+
+        const indexBuffer = this.getAccessorAndAssertType(
+                indices,
+                "SCALAR",
+                Uint16Array
+            ),
+            posBuffer = this.getAccessorAndAssertType(
+                gPrimitive.attributes["POSITION"],
+                "VEC3",
+                Float32Array
+            ),
+            normBuffer = this.getAccessorAndAssertType(
+                gPrimitive.attributes["NORMAL"],
+                "VEC3",
+                Float32Array
+            ),
+            uvBuffer = this.getAccessorAndAssertType(
+                gPrimitive.attributes["TEXCOORD_0"],
+                "VEC2",
+                Float32Array
+            );
+
+        const materialIdx = gPrimitive.material;
+        if (materialIdx === undefined) {
+            throw new Error("Mesh does not have a material/texture");
+        }
+        const baseTex = this.getBaseColorTextureFromMaterial(materialIdx);
+
+        return {
+            name: gMesh.name,
+            indexBuffer,
+            posBuffer,
+            normBuffer,
+            uvBuffer,
+            baseTex,
+        };
+    }
+
+    public getBaseColorTextureFromMaterial(materialIdx: number): TextureV1 {
+        const gMaterial = this.json.materials[materialIdx];
+        if (!gMaterial) throw new Error("Material index OOB");
+
+        if (!gMaterial.pbrMetallicRoughness) {
+            throw new Error("No pbrMetallicRoughness component");
+        }
+
+        if (gMaterial.pbrMetallicRoughness.baseColorTexture === undefined) {
+            throw new Error("No base color texture");
+        }
+
+        const textureInfo = gMaterial.pbrMetallicRoughness.baseColorTexture!;
+
+        if (textureInfo.texCoord !== 0 && textureInfo.texCoord !== undefined) {
+            throw new Error("Unsupported: Multiple UVs");
+        }
+
+        return this.getTexture(textureInfo.index);
+    }
+
+    public getTexture(texId: number) {
+        const gTexture = this.json.textures[texId];
+        if (!gTexture) throw new Error("Texture index OOB");
+
+        if (gTexture?.extensions?.EXT_texture_webp?.source === undefined) {
+            throw new Error("No supported textures found.");
+        }
+
+        return {
+            samplerDescriptor: this.getWebgpuSamplerDescriptor(
+                gTexture.sampler
+            ),
+            image: this.getImage(gTexture.extensions.EXT_texture_webp.source!),
+        };
+    }
+
+    public getWebgpuSamplerDescriptor(
+        samplerIdx: number
+    ): GPUSamplerDescriptor {
+        const gSampler = this.json.samplers[samplerIdx];
+        if (!gSampler) {
+            throw new Error("Sampler idx OOB");
+        }
+
+        return {
+            addressModeU: Gltf.SAMPLER_TO_WGPU[gSampler.wrapS ?? 10497],
+            addressModeV: Gltf.SAMPLER_TO_WGPU[gSampler.wrapT ?? 10497],
+            minFilter: Gltf.getWebGpuSamplerFilter(gSampler.minFilter ?? 9728),
+            magFilter: Gltf.getWebGpuSamplerFilter(gSampler.magFilter ?? 9728),
+        };
+    }
+
+    public getImage(imageIdx: number) {
+        const gImage = this.imageCache[imageIdx];
+        if (!gImage) {
+            throw new Error(
+                "Image index OOB, did you forget to call prepareImages()?"
+            );
+        }
+        return gImage;
+    }
+
+    protected imageCache: ImageBitmap[] = [];
+
+    /*
+     we avoid making all methods async,
+     by requiring a single async call to put images in cache
+     */
+    public async prepareImages() {
+        this.imageCache = await Promise.all(
+            this.json.images.map((imgDef) => {
+                const ibv = this.getBufferView(imgDef.bufferView);
+
+                const base = ibv.bOffset + this.bin.byteOffset;
+                const blob = new Blob(
+                    [ibv.buffer.slice(base, base + ibv.bLength)],
+                    { type: imgDef.mimeType }
+                );
+                
+                return createImageBitmap(blob);
+            })
+        );
     }
 }

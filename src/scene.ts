@@ -14,87 +14,16 @@ import {
 import { quat, vec3 } from "wgpu-matrix";
 
 import { clamp, PI_2 } from "./honda/util/math";
-
-@EcsInjectable()
-class FlyScript extends HondaBehavior {
-    constructor(public eid: number, public transform: TransformComponent) {
-        super();
-    }
-
-    override onUpdate(): void {
-        const ax = Game.input.activeGamepad?.axes[0];
-        const t = ax != undefined ? ax * (Math.PI / 2) + 3.6 : Game.time / 1000;
-        this.transform.translation[0] = 2.5 * Math.sin(t) + 4;
-        this.transform.updateMatrix();
-    }
-}
-
-@EcsInjectable()
-class ExplosionScript extends HondaBehavior {
-    constructor(public eid: number, public transform: TransformComponent) {
-        super();
-    }
-
-    override onUpdate(): void {
-        const ax = Game.input.activeGamepad?.axes[0];
-        const t = ax != undefined ? ax * (Math.PI / 2) + 3.6 : Game.time / 1000;
-        this.transform.scale[0] =
-            this.transform.scale[1] =
-            this.transform.scale[2] =
-                Math.max(Math.tan(t / 2 + Math.PI / 2), 0);
-        this.transform.updateMatrix();
-    }
-}
-
-@EcsInjectable()
-class RotationScript extends HondaBehavior {
-    protected q = quat.fromEuler(0, 0.01, 0, "xyz");
-    protected qd = quat.create();
-
-    constructor(public eid: number, public transform: TransformComponent) {
-        super();
-    }
-
-    override onUpdate(): void {
-        // console.log(this.transform.rotation)
-        quat.mulScalar(this.q, Game.deltaTime / 1000, this.qd);
-        quat.mul(this.transform.rotation, this.q, this.transform.rotation);
-        this.transform.updateMatrix();
-    }
-}
-
-@EcsInjectable()
-class SpawnerScript extends HondaBehavior {
-    protected suicide = 0;
-
-    constructor(protected eid: number) {
-        super();
-        this.suicide = Game.time + 50000;
-    }
-
-    onUpdate(): void {
-        const t = Game.time;
-        const nEnt = Game.ecs.addEntity();
-        Game.ecs.addComponent(
-            nEnt,
-            new TransformComponent(
-                vec3.create(
-                    (Math.random() - 0.5) * 10,
-                    0.1,
-                    (Math.random() - 0.5) * 10
-                ),
-                undefined,
-                vec3.create(0.01, 0.4, 0.01)
-            )
-        );
-
-        Game.ecs.addComponent(nEnt, new CubeComponent(1, 1, 1));
-        if (t > this.suicide) Game.ecs.removeEntity(this.eid);
-    }
-}
+import {
+    MeshComponent,
+    MeshRendererSystem,
+} from "./honda/systems/meshRenderer";
+import { setStatus } from "./honda/util/status";
+import { Gltf } from "./honda/util/gltf";
+import { GpuMeshV1 } from "./honda/gpu/mesh";
+import { GpuTexturedMeshV1 } from "./honda/gpu/texturedMesh";
 
 const sens = 0.005;
-
 @EcsInjectable()
 class FlyCameraScript extends HondaBehavior {
     protected moveBaseVec = vec3.create(0, 0, 0);
@@ -151,11 +80,25 @@ class FlyCameraScript extends HondaBehavior {
     }
 }
 
-export function setupScene(ecs: ECS) {
+export async function setupScene(ecs: ECS) {
+    setStatus("loading assets");
+
+    const m1 = await Gltf.fromUrl("m1.glb");
+    const gm = new GpuMeshV1(m1.getMeshDataV1(0));
+    gm.upload(); // Let's leak a few KiB's of GPU memory
+
+    const m2 = await Gltf.fromUrl("m2.glb");
+    await m2.prepareImages();
+    const gm2 = new GpuTexturedMeshV1(m2.getTexturedMeshV1(0));
+    gm2.upload(); // Let's leak more GPU memory
+
     ecs.addSystem(new ScriptSystem());
     ecs.addSystem(new CameraSystem());
     ecs.addSystem(
         new CubeRendererSystem(vec3.normalize(vec3.create(-1, 2, 3)))
+    );
+    ecs.addSystem(
+        new MeshRendererSystem(vec3.normalize(vec3.create(-1, 2, 3)))
     );
 
     const camera = ecs.addEntity();
@@ -164,29 +107,7 @@ export function setupScene(ecs: ECS) {
     ecs.addComponent(camera, new ScriptComponent(FlyCameraScript));
     // ecs.addComponent(camera, new ScriptComponent(RotationScript));
 
-    const tower1 = ecs.addEntity();
-    ecs.addComponent(
-        tower1,
-        new TransformComponent(
-            vec3.create(0.7, 2, 0),
-            quat.identity() as Float32Array,
-            vec3.create(0.5, 2, 0.5)
-        )
-    );
-    ecs.addComponent(tower1, new ScriptComponent(RotationScript));
-    ecs.addComponent(tower1, new CubeComponent(0.8, 0.8, 0.8));
-
-    const tower2 = ecs.addEntity();
-    ecs.addComponent(
-        tower2,
-        new TransformComponent(
-            vec3.create(-0.7, 2, 0),
-            quat.identity() as Float32Array,
-            vec3.create(0.5, 2, 0.5)
-        )
-    );
-    ecs.addComponent(tower2, new CubeComponent(0.8, 0.8, 0.8));
-
+  
     const floor = ecs.addEntity();
     ecs.addComponent(
         floor,
@@ -198,42 +119,30 @@ export function setupScene(ecs: ECS) {
     );
     ecs.addComponent(floor, new CubeComponent(0.8, 0.8, 0.8));
 
-    const planeBody = ecs.addEntity();
+    const monkey1 = ecs.addEntity();
     ecs.addComponent(
-        planeBody,
+        monkey1,
         new TransformComponent(
-            vec3.create(0, 2.5, 0),
-            quat.identity() as Float32Array,
-            vec3.create(1, 0.1, 0.1)
+            vec3.create(-3, 1, 0),
         )
     );
-    ecs.addComponent(planeBody, new CubeComponent(1.5, 1.5, 1.5));
-    ecs.addComponent(planeBody, new ScriptComponent(FlyScript));
+    ecs.addComponent(monkey1, new MeshComponent(gm, 1, 0, 0));
 
-    const planeWings = ecs.addEntity();
+    const monkey2 = ecs.addEntity();
     ecs.addComponent(
-        planeWings,
+        monkey2,
         new TransformComponent(
-            vec3.create(0, 2.5, 0),
-            quat.identity() as Float32Array,
-            vec3.create(0.2, 0.05, 1)
+            vec3.create(0, 1, 0),
         )
     );
-    ecs.addComponent(planeWings, new CubeComponent(1.5, 1.5, 1.5));
-    ecs.addComponent(planeWings, new ScriptComponent(FlyScript));
+    ecs.addComponent(monkey2, new MeshComponent(gm, 0, 1, 0));
 
-    const explosion = ecs.addEntity();
+    const monkey3 = ecs.addEntity();
     ecs.addComponent(
-        explosion,
+        monkey3,
         new TransformComponent(
-            vec3.create(0.7, 2, 0),
-            quat.fromEuler<Float32Array>(0.5, 0.4, 0.6, "xyz"),
-            vec3.create(1, 1, 1)
+            vec3.create(3, 1, 0),
         )
     );
-    ecs.addComponent(explosion, new CubeComponent(2, 1.5, 0.3));
-    ecs.addComponent(explosion, new ScriptComponent(ExplosionScript));
-
-    const spawner = ecs.addEntity();
-    ecs.addComponent(spawner, new ScriptComponent(SpawnerScript));
+    ecs.addComponent(monkey3, new MeshComponent(gm, 0, 0, 1));
 }

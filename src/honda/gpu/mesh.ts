@@ -42,7 +42,10 @@ export class GpuMeshV1 {
     protected uvBuffer?: GPUBuffer;
     protected indexBuffer?: GPUBuffer;
 
-    constructor(protected meshData: MeshDataV1) {}
+    public drawCount = 0;
+    constructor(protected meshData: MeshDataV1) {
+        this.drawCount = meshData.indexBuffer.count;
+    }
 
     upload() {
         this.positionBuffer = initGpuBuffer(
@@ -63,6 +66,13 @@ export class GpuMeshV1 {
         );
 
         this.uploaded = true;
+    }
+
+    attach(rp: GPURenderPassEncoder) {
+        rp.setVertexBuffer(0, this.positionBuffer!);
+        rp.setVertexBuffer(1, this.normalBuffer!);
+        rp.setVertexBuffer(2, this.uvBuffer!);
+        rp.setIndexBuffer(this.indexBuffer!, "uint16");
     }
 
     //TODO(mbabnik): Expose buffers or add a function that binds mesh

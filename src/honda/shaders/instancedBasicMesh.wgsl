@@ -10,6 +10,9 @@ struct Instance {
     color: vec3<f32>,
 };
 
+@group(0) @binding(0) var<uniform> uniforms: HondaUniforms;
+@group(1) @binding(0) var<storage, read> instances: array<Instance>;
+
 struct VertexIn {
     @location(0) position: vec3<f32>,  
     @location(1) normal: vec3<f32>,    
@@ -43,16 +46,20 @@ fn inverseMat3x3(m: mat3x3<f32>) -> mat3x3<f32> {
     );
 }
 
-@group(0) @binding(0) var<uniform> uniforms: HondaUniforms;
-@group(1) @binding(0) var<uniform> instance: Instance;
-
 
 @vertex
 fn vertex_main(input: VertexIn) -> VertexOutput {
+    let instance = instances[input.instanceIndex];
+
     let transformedPos = uniforms.viewProjection * instance.transform * vec4<f32>(input.position, 1.0);
 
     var output: VertexOutput;
     output.pos = transformedPos;
+
+    
+    // As we are (probably) CPU bound this isn't really *that* bad
+    // Might fuck us over one day tho
+    // TODO: will this fuck us over?
     output.fragNormal = transpose(inverseMat3x3(mat3x3(
         instance.transform[0].xyz,
         instance.transform[1].xyz,
@@ -68,8 +75,8 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let lightDir = normalize(uniforms.sunDirection);
     let normal = normalize(input.fragNormal);
 
-    let diffuse = input.fragColor * dot(normal, lightDir);
-    let ambient = input.fragColor * 0.1;
-    
+    let diffuse = input.fragColor * max(dot(normal, lightDir), 0) * 0.7;
+    let ambient = input.fragColor * 0.3;
+
     return vec4<f32>(diffuse + ambient, 1.0);
 }

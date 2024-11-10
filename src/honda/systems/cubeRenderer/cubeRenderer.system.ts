@@ -8,7 +8,7 @@ import {
     System,
     CameraSystem,
 } from "@/honda/core";
-import code from "@/honda/shaders/basicMesh.wgsl?raw";
+import code from "@/honda/shaders/instancedBasicMesh.wgsl?raw";
 
 import { CubeComponent } from "./cubeRenderer.component";
 import { CUBE_VERTEX_COUNT, CUBE_VERTEX_DATA } from "./cube.constants";

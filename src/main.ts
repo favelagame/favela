@@ -6,8 +6,6 @@ import { setupScene } from "./scene";
 import { Input } from "./honda/input";
 import { perfRenderer } from "./honda/util/perf";
 import { setError, setStatus } from "./honda/util/status";
-import { Gltf } from "./honda/util/gltf";
-import { GpuMeshV1 } from "./honda/gpu/mesh";
 
 const canvas = document.querySelector("canvas")!;
 try {
@@ -20,14 +18,9 @@ try {
 Game.input = new Input(canvas);
 const ecs = new ECS();
 Game.ecs = ecs;
-setStatus("loading assets");
-
-const m1 = await Gltf.fromUrl("m1.glb");
-const gm = new GpuMeshV1(m1.getMeshDataV1(0));
-gm.upload(); // Let's leak a few KiB's of GPU memory
-
 setupScene(ecs);
 setStatus(undefined);
+Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
 
 function frame(t: number) {
     Game.perf.startFrame();
@@ -35,7 +28,6 @@ function frame(t: number) {
     Game.deltaTime = t - Game.time;
     Game.time = t;
     Game.gpu.frameStart();
-    Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
 
     Game.cmdEncoder
         .beginRenderPass({
@@ -59,8 +51,7 @@ function frame(t: number) {
 
     ecs.update();
     Game.input.endFrame();
-
-    Game.gpu.device.queue.submit([Game.cmdEncoder.finish()]);
+    Game.gpu.pushQueue();
     Game.perf.stopFrame();
     requestAnimationFrame(frame);
 }

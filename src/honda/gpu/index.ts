@@ -1,3 +1,5 @@
+import { Game } from "../state";
+
 function nn<T>(value: T | null | undefined, message?: string): T {
     if (value === null) throw new Error(message ?? "value was null");
     if (value === undefined) throw new Error(message ?? "value was undefined");
@@ -64,6 +66,11 @@ export class WebGpu {
             this.canvasTexture = this.ctx.getCurrentTexture();
             this.canvasTextureView = this.canvasTexture.createView();
         }
+    }
+
+    public pushQueue() {
+        this.device.queue.submit([Game.cmdEncoder.finish()]);
+        Game.cmdEncoder = this.device.createCommandEncoder();
     }
 
     static async obtainForCanvas(canvas: HTMLCanvasElement) {

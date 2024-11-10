@@ -1,6 +1,10 @@
+export type TTopologyType = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
 export interface IMeshPrimitive {
-    indices: number;
     attributes: Record<string, number>;
+    indices?: number;
+    material?: number;
+    mode?: TTopologyType;
 }
 
 export interface IMesh {
@@ -40,9 +44,82 @@ export interface IBuffer {
     uri?: string;
 }
 
+interface ITextureInfo {
+    index: number;
+    texCoord?: number;
+}
+
+export interface IPBRMaterial {
+    baseColorFactor?: [number, number, number, number];
+    baseColorTexture?: ITextureInfo;
+    metallicFactor?: number;
+    roughnessFactor?: number;
+    metallicRoughnessTexture?: ITextureInfo;
+}
+
+interface IMaterialNormalTextureInfo extends ITextureInfo {
+    scale?: number;
+}
+
+interface IMaterialOcclusionTextureInfo {
+    strength?: number;
+}
+
+type TAlphaMode = "OPAQUE" | "MASK" | "BLEND";
+
+interface IMaterial {
+    name?: string;
+
+    pbrMetallicRoughness?: IPBRMaterial;
+    normalTexture?: IMaterialNormalTextureInfo;
+    occlusionTexture?: IMaterialOcclusionTextureInfo;
+    emissiveTexture?: ITextureInfo;
+    emissiveFactor?: [number, number, number];
+
+    alphaMode?: TAlphaMode;
+    alphaCutoff?: number;
+    doubleSided?: boolean;
+}
+
+export interface IImage {
+    mimeType: string;
+    bufferView: number;
+    name?: string;
+}
+
+export type TWrap = 33071 | 33648 | 10497;
+export type TFilterBase = 9728 | 9729;
+export type TFilterMag = TFilterBase;
+export type TFilterMin = TFilterBase | 9984 | 9985 | 9986 | 9987;
+
+interface ISampler {
+    magFilter?: TFilterMag;
+    minFilter?: TFilterMin;
+    wrapS?: TWrap;
+    wrapT?: TWrap;
+    name?: string;
+}
+
+interface ITexture {
+    extensions: {
+        EXT_texture_webp: {
+            source: number;
+        };
+    };
+    
+    sampler: number;
+}
+
 export interface IRoot {
     meshes: IMesh[];
     accessors: IAccessor[];
     bufferViews: IBufferView[];
     buffers: IBuffer[];
+    materials: IMaterial[];
+    images: IImage[];
+    textures: ITexture[];
+    samplers: ISampler[];
+
+    extensionsUsed?: string[];
+    extensionsRequired?: string[];
 }
