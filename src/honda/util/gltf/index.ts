@@ -246,7 +246,11 @@ export class Gltf {
         const gMesh = this.json.meshes[index];
         if (!gMesh) throw new Error("Mesh index out of bounds");
         if (gMesh.primitives.length > 1) {
-            throw new Error("Unsupported: multiple primitives in mesh");
+            console.warn(
+                `Unsupported: multiple primitives in mesh (index: ${index}, name: ${
+                    gMesh.name || "<none>"
+                })`
+            );
         }
 
         const [gPrimitive] = gMesh.primitives;
@@ -440,9 +444,30 @@ export class Gltf {
                     [ibv.buffer.slice(base, base + ibv.bLength)],
                     { type: imgDef.mimeType }
                 );
-                
+
                 return createImageBitmap(blob);
             })
         );
+    }
+
+    public generateNodeDot(): string {
+        const nodes = this.json.nodes;
+        if (!nodes) {
+            throw new Error("No nodes found in the glTF file");
+        }
+
+        let dot = "digraph G {\n";
+
+        nodes.forEach((node, index) => {
+            dot += `  node${index} [label="${node.name || `node${index}`}"];\n`;
+            if (node.children) {
+                node.children.forEach((childIndex) => {
+                    dot += `  node${index} -> node${childIndex};\n`;
+                });
+            }
+        });
+
+        dot += "}\n";
+        return dot;
     }
 }

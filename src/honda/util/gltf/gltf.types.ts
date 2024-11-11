@@ -106,9 +106,34 @@ interface ITexture {
             source: number;
         };
     };
-    
+
     sampler: number;
 }
+
+interface INodeBase {
+    camera?: number; // Reference to the camera index
+    children?: number[]; // Array of child node indices, must be unique
+    name?: string; // Optional name property
+    mesh?: number; // Reference to the mesh index
+    weights?: number[]; // Weights for morph targets, requires 'mesh' if present
+    skin?: number; // Reference to the skin index, requires 'mesh' if present
+}
+
+interface INodeWithMatrix extends INodeBase {
+    matrix: Iterable<number>; // 4x4 column-major matrix
+    translation?: never;
+    rotation?: never;
+    scale?: never;
+}
+
+interface INodeWithTRS extends INodeBase {
+    translation?: [number, number, number]; // Translation along x, y, z, default: [0.0, 0.0, 0.0]
+    rotation?: [number, number, number, number]; // Quaternion (x, y, z, w), default: [0.0, 0.0, 0.0, 1.0]
+    scale?: [number, number, number]; // Non-uniform scale factors, default: [1.0, 1.0, 1.0]
+    matrix?: never;
+}
+
+type TNode = INodeWithMatrix | INodeWithTRS;
 
 export interface IRoot {
     meshes: IMesh[];
@@ -119,6 +144,7 @@ export interface IRoot {
     images: IImage[];
     textures: ITexture[];
     samplers: ISampler[];
+    nodes: TNode[];
 
     extensionsUsed?: string[];
     extensionsRequired?: string[];
