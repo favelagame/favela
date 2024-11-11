@@ -1,5 +1,5 @@
 import { Vec3 } from "wgpu-matrix";
-import { makeShaderDataDefinitions, makeStructuredView } from "webgpu-utils";
+import { makeStructuredView } from "webgpu-utils";
 
 import {
     TransformComponent,
@@ -8,25 +8,22 @@ import {
     System,
     CameraSystem,
 } from "@/honda/core";
-import code from "@/honda/shaders/instancedBasicMesh.wgsl?raw";
 
-import { CubeComponent } from "./cubeRenderer.component";
+import { CubeComponent } from "./cube.component";
 import { CUBE_VERTEX_COUNT, CUBE_VERTEX_DATA } from "./cube.constants";
 import * as cr from "./cubeRenderer.constants";
 
-const SHADER_DEFS = makeShaderDataDefinitions(code);
+//TODO(mbabnik): make cube renderer system use honda's WebGpu.pipelines
 
 export class CubeRendererSystem extends System {
-    public componentsRequired = new Set([
-        TransformComponent,
-        CubeComponent,
-    ]);
+    public componentsRequired = new Set([TransformComponent, CubeComponent]);
 
     protected pipeline: GPURenderPipeline;
-    protected module: GPUShaderModule;
     protected cubeVbo: GPUBuffer;
 
-    protected uniforms = makeStructuredView(SHADER_DEFS.uniforms["uniforms"]);
+    protected uniforms = makeStructuredView(
+        Game.gpu.shaderModules.instancedBasicMesh.defs.uniforms["uniforms"]
+    );
     protected uniformsBuffer: GPUBuffer;
     protected uniformBindGroup: GPUBindGroup;
 
@@ -42,14 +39,10 @@ export class CubeRendererSystem extends System {
 
         this.instances = new Float32Array(this.maxInstances * cr.INSTANCE_SIZE);
 
-        this.module = Game.gpu.device.createShaderModule({
-            code,
-        });
-
         this.pipeline = Game.gpu.device.createRenderPipeline({
             layout: "auto",
             vertex: {
-                module: this.module,
+                module: Game.gpu.shaderModules.instancedBasicMesh.module,
                 buffers: [
                     {
                         arrayStride: 24,
@@ -69,7 +62,7 @@ export class CubeRendererSystem extends System {
                 ],
             },
             fragment: {
-                module: this.module,
+                module: Game.gpu.shaderModules.instancedBasicMesh.module,
                 targets: [{ format: Game.gpu.pFormat }],
             },
             primitive: {
@@ -125,20 +118,6 @@ export class CubeRendererSystem extends System {
     }
 
     public update(entities: Set<Entity>): void {
-        // TODO(???): extract uniform code
-        const cs = this.ecs.getSystem(CameraSystem);
-        this.uniforms.set({
-            viewProjection: cs.viewMatrix,
-            sunDirection: this.lightDirection,
-            deltaTime: Game.deltaTime,
-            time: Game.time,
-        });
-        Game.gpu.device.queue.writeBuffer(
-            this.uniformsBuffer,
-            0,
-            this.uniforms.arrayBuffer
-        );
-
         let i = 0;
         for (const entity of entities) {
             const transform = this.ecs
@@ -155,6 +134,20 @@ export class CubeRendererSystem extends System {
             );
             i++;
         }
+        if (i == 0) return;
+
+        const cs = this.ecs.getSystem(CameraSystem);
+        this.uniforms.set({
+            viewProjection: cs.viewMatrix,
+            sunDirection: this.lightDirection,
+            deltaTime: Game.deltaTime,
+            time: Game.time,
+        });
+        Game.gpu.device.queue.writeBuffer(
+            this.uniformsBuffer,
+            0,
+            this.uniforms.arrayBuffer
+        );
 
         Game.gpu.device.queue.writeBuffer(
             this.instanceBuffer,

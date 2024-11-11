@@ -18,7 +18,7 @@ try {
 Game.input = new Input(canvas);
 const ecs = new ECS();
 Game.ecs = ecs;
-setupScene(ecs);
+await setupScene(ecs);
 setStatus(undefined);
 Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
 

@@ -1,5 +1,6 @@
 import { MeshDataV1, TypedArrays } from "@/honda/util/gltf";
-import { Game } from "../state";
+import { Game } from "../../state";
+import { IMesh, MeshType } from "./mesh.interface";
 
 /**
  * Utility function that clones a CPU Typed array into a GPU buffer.
@@ -27,15 +28,13 @@ function initGpuBuffer(src: TypedArrays, usage: GPUBufferUsageFlags) {
     return b;
 }
 
-/**
- * "V1" Mesh, current functionality is:
- *  - vec3 position
- *  - vec3 normal
- *  - vec2 uv
- *  - indexed rendering
- * No support for textures/materials/animation here
- */
-export class GpuMeshV1 {
+function setupPipeline() {}
+
+export class GpuMeshV1 implements IMesh {
+    public readonly type: MeshType = "basicColor";
+    public readonly setupPipeline = setupPipeline;
+    public bufKey: number;
+
     protected uploaded = false;
     protected positionBuffer?: GPUBuffer;
     protected normalBuffer?: GPUBuffer;
@@ -45,6 +44,7 @@ export class GpuMeshV1 {
     public drawCount = 0;
     constructor(protected meshData: MeshDataV1) {
         this.drawCount = meshData.indexBuffer.count;
+        this.bufKey = this.meshData.id;
     }
 
     upload() {
@@ -74,6 +74,4 @@ export class GpuMeshV1 {
         rp.setVertexBuffer(2, this.uvBuffer!);
         rp.setIndexBuffer(this.indexBuffer!, "uint16");
     }
-
-    //TODO(mbabnik): Expose buffers or add a function that binds mesh
 }

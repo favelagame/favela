@@ -4,7 +4,7 @@ import { MAT4F_SIZE, VEC3F_SIZE } from "@/honda/gpu/const";
  * Make sure to set colorAttachments[0].view and depthStencilAttachment.view
  */
 export const RENDER_PASS_DESCRIPTOR = {
-    label: "CubeRenderer",
+    label: "yep",
     depthStencilAttachment: {
         view: null! as GPUTextureView,
         depthLoadOp: "load",

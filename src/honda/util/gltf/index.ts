@@ -1,7 +1,5 @@
-const GLB_MAGIC = 0x46546c67;
-const GLB_CHUNKYTPE_JSON = 0x4e4f534a;
-const GLB_CHUNKTYPE_BIN = 0x004e4942;
-
+import { nn } from "..";
+import { getNewResourceId } from "../resource";
 import type * as TG from "./gltf.types";
 
 export type TTypedArrayCtor<T> = {
@@ -35,6 +33,7 @@ export interface FavelaBufferView {
 }
 
 export interface MeshDataV1 {
+    id: number;
     name: string;
     indexBuffer: FavelaAccesor<Uint16Array, "SCALAR">;
     posBuffer: FavelaAccesor<Float32Array, "VEC3">;
@@ -43,6 +42,7 @@ export interface MeshDataV1 {
 }
 
 export interface TexturedMeshDataV1 {
+    id: number;
     name: string;
     indexBuffer: FavelaAccesor<Uint16Array, "SCALAR">;
     posBuffer: FavelaAccesor<Float32Array, "VEC3">;
@@ -57,6 +57,10 @@ export interface TextureV1 {
 }
 
 export class Gltf {
+    private static readonly MAGIC = 0x46546c67;
+    private static readonly CHUNKYTPE_JSON = 0x4e4f534a;
+    private static readonly CHUNKTYPE_BIN = 0x004e4942;
+
     public static readonly supportedExtensions: string[] = ["EXT_texture_webp"];
 
     static readonly COMP_TYPE_TO_CTOR: Record<
@@ -95,15 +99,23 @@ export class Gltf {
         }
     }
 
-    public json: TG.IRoot;
-    protected bin: ArrayBufferView;
+    public static async fromUrl(url: string) {
+        const f = await fetch(url);
+        const buf = await f.arrayBuffer();
 
-    constructor(buf: ArrayBuffer) {
+        return new Gltf(buf, url);
+    }
+
+    public json: TG.IRoot;
+    private bin: ArrayBufferView;
+    private imageCache: ImageBitmap[] = [];
+
+    constructor(buf: ArrayBuffer, protected name = "<unknown glTF>") {
         const bufU32 = new Uint32Array(buf);
 
         const [magic, version] = bufU32;
 
-        if (magic != GLB_MAGIC) {
+        if (magic != Gltf.MAGIC) {
             throw new Error("Invalid magic, this isn't glTF");
         }
 
@@ -119,17 +131,37 @@ export class Gltf {
 
             const dv = new DataView(buf, (i + 2) * 4, cLen);
 
-            if (cType == GLB_CHUNKYTPE_JSON) jsonView = dv;
-            else if (cType == GLB_CHUNKTYPE_BIN) binView = dv;
+            if (cType == Gltf.CHUNKYTPE_JSON) jsonView = dv;
+            else if (cType == Gltf.CHUNKTYPE_BIN) binView = dv;
 
             i += Math.ceil(cLen / 4) + 2;
         }
 
-        if (!(jsonView && binView)) throw new Error("Missing chunk(s)");
-        this.json = JSON.parse(new TextDecoder().decode(jsonView));
-        this.bin = binView;
+        this.json = JSON.parse(
+            new TextDecoder().decode(nn(jsonView, "Missing JSON chunk"))
+        );
+        this.bin = nn(binView, "Missing Binary chunk");
 
         this.checkExt();
+    }
+
+    /**
+     Call this if you need to load textures.
+     */
+    public async prepareImages(): Promise<void> {
+        this.imageCache = await Promise.all(
+            this.json.images.map((imgDef) => {
+                const ibv = this.getBufferView(imgDef.bufferView);
+
+                const base = ibv.bOffset + this.bin.byteOffset;
+                const blob = new Blob(
+                    [ibv.buffer.slice(base, base + ibv.bLength)],
+                    { type: imgDef.mimeType }
+                );
+
+                return createImageBitmap(blob);
+            })
+        );
     }
 
     protected checkExt() {
@@ -156,29 +188,25 @@ export class Gltf {
         }
     }
 
-    public static async fromUrl(url: string) {
-        const f = await fetch(url);
-        const buf = await f.arrayBuffer();
-
-        return new Gltf(buf);
-    }
-
     public getBuffer(index: number) {
-        const gBuffer = this.json.buffers[index];
-        if (index != 0 || !gBuffer) {
-            throw new Error("Jeba");
+        if (index !== 0) {
+            throw new Error(
+                `Multiple buffers not supported (requested buffer ${index})!`
+            );
         }
+
+        const gBuffer = nn(this.json.buffers[index]);
+
         if (gBuffer.byteLength != this.bin.byteLength) {
-            throw new Error("What the sigma");
+            console.warn(
+                `Buffer size mismatch (JSON: ${gBuffer.byteLength} BIN: ${this.bin.byteLength}) `
+            );
         }
         return this.bin.buffer;
     }
 
     public getBufferView(index: number): FavelaBufferView {
-        const gBufferView = this.json.bufferViews[index];
-        if (!gBufferView) {
-            throw new Error("Jeba");
-        }
+        const gBufferView = nn(this.json.bufferViews[index], "bufferView OOB");
 
         return {
             buffer: this.getBuffer(gBufferView.buffer),
@@ -189,9 +217,7 @@ export class Gltf {
     }
 
     public getAccessor(index: number): FavelaAccesor {
-        const gAccessor = this.json.accessors[index];
-        if (!gAccessor) throw new Error("Accessor index out of bounds");
-
+        const gAccessor = nn(this.json.accessors[index], "accessor OOB");
         if (
             gAccessor.normalized ||
             gAccessor.sparse ||
@@ -200,13 +226,13 @@ export class Gltf {
             throw new Error("Unsupported");
         }
 
-        const arrCtor = Gltf.COMP_TYPE_TO_CTOR[gAccessor.componentType];
+        const TypedArrayCtor = Gltf.COMP_TYPE_TO_CTOR[gAccessor.componentType];
         const bv = this.getBufferView(gAccessor.bufferView);
 
-        const accessor = new arrCtor(
+        const accessor = new TypedArrayCtor(
             bv.buffer,
             bv.bOffset + this.bin.byteOffset, //FIXME: this can fuck up if there are multiple buffers
-            Math.floor(bv.bLength / arrCtor.BYTES_PER_ELEMENT) //TODO: is this OK?
+            Math.floor(bv.bLength / TypedArrayCtor.BYTES_PER_ELEMENT) //TODO: is this OK?
         );
 
         return {
@@ -242,14 +268,21 @@ export class Gltf {
         return accessor as unknown as FavelaAccesor<Tbuffer, Taccessor>;
     }
 
-    public getMeshDataV1(index: number): MeshDataV1 {
-        const gMesh = this.json.meshes[index];
-        if (!gMesh) throw new Error("Mesh index out of bounds");
+    protected getMeshPrimitive(index: number) {
+        const gMesh = nn(this.json.meshes[index], "mesh OOB");
+
         if (gMesh.primitives.length > 1) {
-            throw new Error("Unsupported: multiple primitives in mesh");
+            console.warn(
+                `Only loading data for first primitive in mesh ${index}`
+            );
         }
 
-        const [gPrimitive] = gMesh.primitives;
+        return nn(gMesh.primitives[0], `Mesh ${index} has no primitives`);
+    }
+
+    public getMeshDataV1(index: number): MeshDataV1 {
+        const name = this.json.meshes[index]?.name ?? "<unknown>";
+        const gPrimitive = this.getMeshPrimitive(index);
 
         if (
             !("POSITION" in gPrimitive.attributes) ||
@@ -290,7 +323,8 @@ export class Gltf {
             );
 
         return {
-            name: gMesh.name,
+            id: getNewResourceId(),
+            name,
             indexBuffer,
             posBuffer,
             normBuffer,
@@ -299,13 +333,8 @@ export class Gltf {
     }
 
     public getTexturedMeshV1(index: number): TexturedMeshDataV1 {
-        const gMesh = this.json.meshes[index];
-        if (!gMesh) throw new Error("Mesh index out of bounds");
-        if (gMesh.primitives.length > 1) {
-            throw new Error("Unsupported: multiple primitives in mesh");
-        }
-
-        const [gPrimitive] = gMesh.primitives;
+        const name = this.json.meshes[index]?.name ?? "<unknown>";
+        const gPrimitive = this.getMeshPrimitive(index);
 
         if (
             !("POSITION" in gPrimitive.attributes) ||
@@ -352,7 +381,8 @@ export class Gltf {
         const baseTex = this.getBaseColorTextureFromMaterial(materialIdx);
 
         return {
-            name: gMesh.name,
+            id: getNewResourceId(),
+            name,
             indexBuffer,
             posBuffer,
             normBuffer,
@@ -415,34 +445,9 @@ export class Gltf {
     }
 
     public getImage(imageIdx: number) {
-        const gImage = this.imageCache[imageIdx];
-        if (!gImage) {
-            throw new Error(
-                "Image index OOB, did you forget to call prepareImages()?"
-            );
-        }
-        return gImage;
-    }
-
-    protected imageCache: ImageBitmap[] = [];
-
-    /*
-     we avoid making all methods async,
-     by requiring a single async call to put images in cache
-     */
-    public async prepareImages() {
-        this.imageCache = await Promise.all(
-            this.json.images.map((imgDef) => {
-                const ibv = this.getBufferView(imgDef.bufferView);
-
-                const base = ibv.bOffset + this.bin.byteOffset;
-                const blob = new Blob(
-                    [ibv.buffer.slice(base, base + ibv.bLength)],
-                    { type: imgDef.mimeType }
-                );
-                
-                return createImageBitmap(blob);
-            })
+        return nn(
+            this.imageCache[imageIdx],
+            "image OOB,  did you forget to call prepareImages()"
         );
     }
 }

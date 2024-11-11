@@ -13,15 +13,15 @@ import {
 } from "@/honda/core";
 import { quat, vec3 } from "wgpu-matrix";
 
-import { clamp, PI_2 } from "./honda/util/math";
+import { clamp, PI_2 } from "@/honda/util";
 import {
     MeshComponent,
     MeshRendererSystem,
-} from "./honda/systems/meshRenderer";
-import { setStatus } from "./honda/util/status";
-import { Gltf } from "./honda/util/gltf";
-import { GpuMeshV1 } from "./honda/gpu/mesh";
-import { GpuTexturedMeshV1 } from "./honda/gpu/texturedMesh";
+} from "@/honda/systems/meshRenderer";
+import { setStatus } from "@/honda/util/status";
+import { Gltf } from "@/honda/util/gltf";
+import { GpuMeshV1 } from "@/honda/gpu/meshes/basic.mesh";
+import { GpuTexturedMeshV1 } from "@/honda/gpu/meshes/textured.mesh";
 
 const sens = 0.005;
 @EcsInjectable()
@@ -92,6 +92,10 @@ export async function setupScene(ecs: ECS) {
     const gm2 = new GpuTexturedMeshV1(m2.getTexturedMeshV1(0));
     gm2.upload(); // Let's leak more GPU memory
 
+    const m3 = await Gltf.fromUrl("m3.glb");
+    const gm3 = new GpuMeshV1(m3.getMeshDataV1(0));
+    gm3.upload();
+
     ecs.addSystem(new ScriptSystem());
     ecs.addSystem(new CameraSystem());
     ecs.addSystem(
@@ -107,7 +111,6 @@ export async function setupScene(ecs: ECS) {
     ecs.addComponent(camera, new ScriptComponent(FlyCameraScript));
     // ecs.addComponent(camera, new ScriptComponent(RotationScript));
 
-  
     const floor = ecs.addEntity();
     ecs.addComponent(
         floor,
@@ -120,29 +123,18 @@ export async function setupScene(ecs: ECS) {
     ecs.addComponent(floor, new CubeComponent(0.8, 0.8, 0.8));
 
     const monkey1 = ecs.addEntity();
-    ecs.addComponent(
-        monkey1,
-        new TransformComponent(
-            vec3.create(-3, 1, 0),
-        )
-    );
+    ecs.addComponent(monkey1, new TransformComponent(vec3.create(-3, 1, 0)));
     ecs.addComponent(monkey1, new MeshComponent(gm, 1, 0, 0));
 
     const monkey2 = ecs.addEntity();
-    ecs.addComponent(
-        monkey2,
-        new TransformComponent(
-            vec3.create(0, 1, 0),
-        )
-    );
+    ecs.addComponent(monkey2, new TransformComponent(vec3.create(0, 1, 0)));
     ecs.addComponent(monkey2, new MeshComponent(gm, 0, 1, 0));
 
     const monkey3 = ecs.addEntity();
-    ecs.addComponent(
-        monkey3,
-        new TransformComponent(
-            vec3.create(3, 1, 0),
-        )
-    );
-    ecs.addComponent(monkey3, new MeshComponent(gm, 0, 0, 1));
+    ecs.addComponent(monkey3, new TransformComponent(vec3.create(3, 1, 0)));
+    ecs.addComponent(monkey3, new MeshComponent(gm3, 0, 0, 1));
+
+    const testCube = ecs.addEntity();
+    ecs.addComponent(testCube, new TransformComponent(vec3.create(0, 1, -3)));
+    ecs.addComponent(testCube, new MeshComponent(gm2, 0, 0, 1));
 }
