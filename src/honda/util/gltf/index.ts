@@ -273,7 +273,9 @@ export class Gltf {
 
         if (gMesh.primitives.length > 1) {
             console.warn(
-                `Only loading data for first primitive in mesh ${index}`
+                `Unsupported: multiple primitives in mesh (index: ${index}, name: ${
+                    gMesh.name || "<none>"
+                })`
             );
         }
 
