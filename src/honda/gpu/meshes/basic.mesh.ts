@@ -10,7 +10,6 @@ import { IMesh, MeshType } from "./mesh.interface";
  * @returns GPU buffer that holds the current contents of src
  */
 function initGpuBuffer(src: TypedArrays, usage: GPUBufferUsageFlags) {
-    console.log("setting up buffer", src.byteLength);
     const b = Game.gpu.device.createBuffer({
         size: (src.byteLength + 3) & ~3, // make size a multiple of 4
         usage: usage | GPUBufferUsage.COPY_DST,

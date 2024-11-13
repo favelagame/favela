@@ -158,7 +158,7 @@ export class CubeRendererSystem extends System {
         );
 
         cr.RENDER_PASS_DESCRIPTOR.colorAttachments[0].view =
-            Game.gpu.canvasTextureView;
+            Game.gpu.renderTextureView;
         cr.RENDER_PASS_DESCRIPTOR.depthStencilAttachment.view =
             Game.gpu.depthTextureView;
 

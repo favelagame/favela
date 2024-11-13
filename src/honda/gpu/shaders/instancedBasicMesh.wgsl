@@ -49,13 +49,10 @@ fn inverseMat3x3(m: mat3x3<f32>) -> mat3x3<f32> {
 
 @vertex
 fn vertex_main(input: VertexIn) -> VertexOutput {
-    let instance = instances[input.instanceIndex];
-
-    let transformedPos = uniforms.viewProjection * instance.transform * vec4<f32>(input.position, 1.0);
-
     var output: VertexOutput;
+    let instance = instances[input.instanceIndex];
+    let transformedPos = uniforms.viewProjection * instance.transform * vec4<f32>(input.position, 1.0);
     output.pos = transformedPos;
-
     
     // As we are (probably) CPU bound this isn't really *that* bad
     // Might fuck us over one day tho

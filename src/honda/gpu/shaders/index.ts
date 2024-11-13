@@ -4,7 +4,11 @@ import {
 } from "webgpu-utils";
 import { WebGpu } from "..";
 
-type ShaderKey = "instancedBasicMesh" | "basicMesh" | "instancedTexturedMesh";
+type ShaderKey =
+    | "instancedBasicMesh"
+    | "basicMesh"
+    | "instancedTexturedMesh"
+    | "favelapost";
 
 const shaderSources = import.meta.glob("./*.wgsl", {
     eager: true,

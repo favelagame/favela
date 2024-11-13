@@ -3,16 +3,19 @@ import { nn } from "../util";
 import { createBindGroupLayouts } from "./bindGroupLayouts";
 import { createBasicMeshInstanced } from "./pipelines/instancedBasicMesh.pipeline";
 import { createTexturedMeshInstanced } from "./pipelines/instancedTexturedMesh.pipeline";
+import { createPostProcess } from "./pipelines/post.pipeline";
 import { createModules } from "./shaders";
 
 export class WebGpu {
     private ro: ResizeObserver;
 
-    public depthTextureView: GPUTextureView;
-    public canvasTextureView: GPUTextureView;
-
     public depthTexture: GPUTexture;
     public canvasTexture: GPUTexture;
+    public renderTexture: GPUTexture;
+
+    public depthTextureView: GPUTextureView;
+    public renderTextureView: GPUTextureView;
+    public canvasTextureView: GPUTextureView;
 
     public pFormat = navigator.gpu.getPreferredCanvasFormat();
     public shaderModules = createModules(this);
@@ -20,7 +23,10 @@ export class WebGpu {
     public pipelines = {
         instancedBasic: createBasicMeshInstanced(this),
         instancedTextured: createTexturedMeshInstanced(this),
+        post: createPostProcess(this),
     };
+
+    public wasResized = false;
 
     protected gpuSamplerMap: Record<string, GPUSampler> = {};
 
@@ -64,12 +70,22 @@ export class WebGpu {
         console.groupEnd();
 
         this.canvasTexture = this.ctx.getCurrentTexture();
-        this.canvasTextureView = this.canvasTexture.createView();
+        this.renderTexture = this.device.createTexture({
+            format: this.pFormat,
+            size: [canvas.width, canvas.height, 1],
+            usage:
+                GPUTextureUsage.RENDER_ATTACHMENT |
+                GPUTextureUsage.TEXTURE_BINDING,
+        });
         this.depthTexture = this.device.createTexture({
             size: [canvas.width, canvas.height, 1],
             format: "depth24plus",
-            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST,
+            usage:
+                GPUTextureUsage.RENDER_ATTACHMENT |
+                GPUTextureUsage.TEXTURE_BINDING,
         });
+        this.canvasTextureView = this.canvasTexture.createView();
+        this.renderTextureView = this.renderTexture.createView();
         this.depthTextureView = this.depthTexture.createView();
 
         this.ro = new ResizeObserver((e) => this.handleResize(e));
@@ -86,12 +102,27 @@ export class WebGpu {
         this.canvas.height = nn(e.devicePixelContentBoxSize?.[0].blockSize);
 
         this.depthTexture.destroy();
+        this.renderTexture.destroy();
+
         this.depthTexture = this.device.createTexture({
             size: [this.canvas.width, this.canvas.height, 1],
             format: "depth24plus",
-            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST,
+            usage:
+                GPUTextureUsage.RENDER_ATTACHMENT |
+                GPUTextureUsage.TEXTURE_BINDING,
         });
+
+        this.renderTexture = this.device.createTexture({
+            format: this.pFormat,
+            size: [this.canvas.width, this.canvas.height, 1],
+            usage:
+                GPUTextureUsage.RENDER_ATTACHMENT |
+                GPUTextureUsage.TEXTURE_BINDING,
+        });
+
+        this.renderTextureView = this.renderTexture.createView();
         this.depthTextureView = this.depthTexture.createView();
+        this.wasResized = true;
     }
 
     public frameStart() {

@@ -105,7 +105,7 @@ export class MeshRendererSystem extends System {
         let pmt = "" as unknown as MeshType,
             pmk = -1;
         cr.RENDER_PASS_DESCRIPTOR.colorAttachments[0].view =
-            Game.gpu.canvasTextureView;
+            Game.gpu.renderTextureView;
         cr.RENDER_PASS_DESCRIPTOR.depthStencilAttachment.view =
             Game.gpu.depthTextureView;
         const pass = Game.cmdEncoder.beginRenderPass(cr.RENDER_PASS_DESCRIPTOR);
