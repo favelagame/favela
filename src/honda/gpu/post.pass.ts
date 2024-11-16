@@ -66,14 +66,16 @@ export class PostprocessPass {
             });
         }
 
+        const tf = Math.sin(Game.time / 1000) + 1;
+        const tf2 = Math.cos(Game.time / 100) / 2 + 1;
         this.settings.set({
             mode: mode(),
             inverseProjection:
                 Game.ecs.getSystem(CameraSystem).activeCamera.invMatrix,
-            fogStart: 1,
-            fogEnd: 100,
+            fogStart: tf,
+            fogEnd: tf + 1,
             fogDensity: 1,
-            fogColor: [1, 0, 1],
+            fogColor: [0.6, tf2, 0.6],
         });
 
         const post = Game.cmdEncoder.beginRenderPass({

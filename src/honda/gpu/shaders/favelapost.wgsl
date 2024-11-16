@@ -45,12 +45,17 @@ fn getWorldDepth(p: vec2u) -> f32 {
 
 @fragment
 fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
+    let base = textureLoad(color, vec2<u32>(fragCoord.xy), u32(post.mode));
     let d = getWorldDepth(vec2u(fragCoord.xy));
 
-    let base = textureLoad(color, vec2<u32>(fragCoord.xy), u32(post.mode));
     if post.mode == 0 {
-        return base;
+        // How much of the distance is inside the fog
+        let fogD = clamp(d - post.fogStart, 0, post.fogEnd - post.fogStart);
+        let fogFactor = min(fogD * post.fogDensity, 1);
+
+        return vec4f(base.xyz * (1-fogFactor) + post.fogColor * fogFactor, 1.0);
     } else {
+        // depth debug
         return vec4f(d, d, d, 1);
     }
 }

@@ -58,7 +58,7 @@ class FlyCameraScript extends HondaBehavior {
             vec3.normalize(this.moveBaseVec, this.moveBaseVec);
             vec3.mulScalar(
                 this.moveBaseVec,
-                Game.deltaTime / 1000,
+                (Game.deltaTime / 1000) * (Game.input.btnMap["ShiftLeft"] ? 5 : 1),
                 this.moveBaseVec
             );
 
