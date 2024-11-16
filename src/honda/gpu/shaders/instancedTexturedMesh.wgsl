@@ -72,10 +72,13 @@ fn vertex_main(input: VertexIn) -> VertexOutput {
 
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
+    let texture =  textureSample(tBase, tSampler, input.uv);
+    if (texture.w < 0.5) {discard;}
+    let albedo = texture.xyz;
+
     let lightDir = normalize(uniforms.sunDirection);
     let normal = normalize(input.fragNormal);
 
-    let albedo =  textureSample(tBase, tSampler, input.uv).xyz;
 
     let diffuse = albedo * max(dot(normal, lightDir), 0) * 0.7;
     let ambient = albedo * 0.3;
