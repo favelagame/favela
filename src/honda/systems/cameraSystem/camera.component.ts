@@ -7,6 +7,7 @@ export class CameraComponent {
     protected projectionMtx = mat4.create();
     protected invProjectionMtx = mat4.create();
     protected dirty = true;
+    protected currentAspect = 0;
 
     public constructor(
         protected _fov: number,
@@ -56,18 +57,18 @@ export class CameraComponent {
             this._far,
             this.projectionMtx
         );
-
+        this.currentAspect = Game.gpu.aspectRatio;
         mat4.inverse(this.projectionMtx, this.invProjectionMtx);
         this.dirty = false;
     }
 
     public get matrix() {
-        if (this.dirty) this.recompute();
+        if (Game.gpu.aspectRatio != this.currentAspect || this.dirty) this.recompute();
         return this.projectionMtx;
     }
 
     public get invMatrix() {
-        if (this.dirty) this.recompute();
+        if (Game.gpu.aspectRatio != this.currentAspect || this.dirty) this.recompute();
         return this.invProjectionMtx;
     }
 }
