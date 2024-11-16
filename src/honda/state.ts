@@ -15,3 +15,6 @@ export const Game = {
     input: null! as Input,
     perf: new Perf(),
 };
+
+//@ts-expect-error expose state to the console
+window.Game = Game;

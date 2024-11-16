@@ -6,6 +6,7 @@ import { CameraComponent } from "./camera.component";
 export class CameraSystem extends System {
     public componentsRequired = new Set([TransformComponent, CameraComponent]);
 
+    public activeCamera: CameraComponent = null!;
     public viewMatrix = mat4.identity();
     protected cameraInverse = mat4.identity();
 
@@ -15,6 +16,7 @@ export class CameraSystem extends System {
             const cc = comps.get(CameraComponent);
             if (!cc.active) continue;
             const tc = comps.get(TransformComponent);
+            this.activeCamera = cc;
 
             // C^1
             mat4.fromQuat(quat.inverse(tc.rotation), this.cameraInverse);
@@ -26,6 +28,7 @@ export class CameraSystem extends System {
 
             // V = P * C^-1
             mat4.multiply(cc.matrix, this.cameraInverse, this.viewMatrix);
+            break;
         }
     }
 }

@@ -4,7 +4,8 @@ import { mat4 } from "wgpu-matrix";
 export class CameraComponent {
     public active = true;
 
-    protected projectionMatrix = mat4.create();
+    protected projectionMtx = mat4.create();
+    protected invProjectionMtx = mat4.create();
     protected dirty = true;
 
     public constructor(
@@ -53,12 +54,20 @@ export class CameraComponent {
             Game.gpu.aspectRatio,
             this._near,
             this._far,
-            this.projectionMatrix
+            this.projectionMtx
         );
+
+        mat4.inverse(this.projectionMtx, this.invProjectionMtx);
+        this.dirty = false;
     }
 
     public get matrix() {
         if (this.dirty) this.recompute();
-        return this.projectionMatrix;
+        return this.projectionMtx;
+    }
+
+    public get invMatrix() {
+        if (this.dirty) this.recompute();
+        return this.invProjectionMtx;
     }
 }

@@ -1,5 +1,13 @@
 
 struct PostCfg {
+    inverseProjection: mat4x4f,
+
+    //TODO: fog
+    fogStart: f32,
+    fogEnd: f32,
+    fogDensity: f32,
+    fogColor: vec3f,
+
     mode: u32,
 };
 
@@ -18,15 +26,31 @@ fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
     return vec4f(bigTri[index], 0, 1);
 }
 
+fn getWorldDepth(p: vec2u) -> f32 {
+    let depthValue = textureLoad(depth, p, 0);
+    let dim = vec2f(textureDimensions(depth).xy);
+
+    let ndc = vec4f(
+        (f32(p.x) / dim.x) * 2.0 - 1.0,
+        1.0 - (f32(p.y) / dim.y) * 2.0,
+        depthValue,
+        1.0
+    );
+
+    let viewSpacePos = post.inverseProjection * ndc;
+    let viewPos = viewSpacePos.xyz / viewSpacePos.w;
+
+    return length(viewPos.xyz) / 10.0;
+}
+
 @fragment
 fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
-    // TODO: make depth be an actual unit not just some relative BS
-    let d = (textureLoad(depth, vec2<u32>(fragCoord.xy), u32(0)) - 0.99) * 100;
-    let dv = vec4f(d, d, d, 1);
+    let d = getWorldDepth(vec2u(fragCoord.xy));
+
+    let base = textureLoad(color, vec2<u32>(fragCoord.xy), u32(post.mode));
     if post.mode == 0 {
-        let base = textureLoad(color, vec2<u32>(fragCoord.xy), u32(0));
-        return dv + (1 - d * d) * base;
+        return base;
     } else {
-        return dv;
+        return vec4f(d, d, d, 1);
     }
 }

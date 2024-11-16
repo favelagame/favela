@@ -1,15 +1,24 @@
+import { CameraSystem } from "../core";
 import { Game } from "../state";
+import { makeStructuredView } from "webgpu-utils";
+
+function mode() {
+    const map = Game.input.btnMap;
+    if (map["KeyB"]) return 1; // wdepth
+    return 0;
+}
 
 export class PostprocessPass {
-    // 0 for post processed, 1 for Z buffer
-    // this will get expanded one day
-    protected settings = new Uint32Array([0]);
+    protected settings = makeStructuredView(
+        Game.gpu.shaderModules.favelapost.defs.structs["PostCfg"]
+    );
+
     protected settingsGpuBuffer: GPUBuffer;
     protected bindGroup: GPUBindGroup;
 
     constructor() {
         this.settingsGpuBuffer = Game.gpu.device.createBuffer({
-            size: this.settings.byteLength,
+            size: this.settings.arrayBuffer.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -57,6 +66,16 @@ export class PostprocessPass {
             });
         }
 
+        this.settings.set({
+            mode: mode(),
+            inverseProjection:
+                Game.ecs.getSystem(CameraSystem).activeCamera.invMatrix,
+            fogStart: 1,
+            fogEnd: 100,
+            fogDensity: 1,
+            fogColor: [1, 0, 1],
+        });
+
         const post = Game.cmdEncoder.beginRenderPass({
             label: "post",
             colorAttachments: [
@@ -73,7 +92,7 @@ export class PostprocessPass {
         Game.gpu.device.queue.writeBuffer(
             this.settingsGpuBuffer,
             0,
-            this.settings
+            this.settings.arrayBuffer
         );
         post.setBindGroup(0, this.bindGroup);
         post.draw(3);
