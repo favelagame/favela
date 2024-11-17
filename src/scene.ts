@@ -1,7 +1,6 @@
 import {
     CameraComponent,
     CameraSystem,
-    CubeRendererSystem,
     ECS,
     EcsInjectable,
     Game,
@@ -96,9 +95,6 @@ export async function setupScene(ecs: ECS) {
 
     ecs.addSystem(new ScriptSystem());
     ecs.addSystem(new CameraSystem());
-    ecs.addSystem(
-        new CubeRendererSystem(vec3.normalize(vec3.create(-1, 2, 3)))
-    );
     ecs.addSystem(
         new MeshRendererSystem(vec3.normalize(vec3.create(-1, 2, 3)))
     );

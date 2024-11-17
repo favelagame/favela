@@ -90,11 +90,12 @@ export class Gltf {
             case 9729:
                 return "linear";
             default:
-                console.warn(
-                    "Unsupported sampler filter mode:",
-                    n,
-                    "defaulting to linear"
-                );
+                // this just spams the console
+                // console.warn(
+                //     "Unsupported sampler filter mode:",
+                //     n,
+                //     "defaulting to linear"
+                // );
                 return "linear";
         }
     }

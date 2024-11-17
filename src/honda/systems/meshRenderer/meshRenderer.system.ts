@@ -2,7 +2,6 @@ import { Vec3 } from "wgpu-matrix";
 import {
     TransformComponent,
     Game,
-    Entity,
     System,
     CameraSystem,
 } from "@/honda/core";
@@ -15,14 +14,10 @@ export class MeshRendererSystem extends System {
     public componentsRequired = new Set([TransformComponent, MeshComponent]);
 
     protected gUniforms = makeStructuredView(
-        Game.gpu.shaderModules.basicMesh.defs.uniforms["uniforms"]
+        Game.gpu.shaderModules.instancedTexturedMesh.defs.uniforms["uniforms"]
     );
     protected gUniformsBuffer: GPUBuffer;
     protected gUniformBindGroup: GPUBindGroup;
-
-    protected iUniforms = makeStructuredView(
-        Game.gpu.shaderModules.basicMesh.defs.uniforms["instance"]
-    );
 
     protected instances: Float32Array;
     protected instanceBuffer: GPUBuffer;
@@ -41,7 +36,7 @@ export class MeshRendererSystem extends System {
         });
 
         this.gUniformBindGroup = Game.gpu.device.createBindGroup({
-            layout: Game.gpu.pipelines.instancedBasic.getBindGroupLayout(0),
+            layout: Game.gpu.pipelines.instancedTextured.getBindGroupLayout(0),
             entries: [
                 {
                     binding: cr.UNIFORM_BIND_GROUP_BINDING,
@@ -50,7 +45,7 @@ export class MeshRendererSystem extends System {
             ],
         });
 
-        this.instances = new Float32Array(20 * maxInstances);
+        this.instances = new Float32Array(36 * maxInstances);
         this.instanceBuffer = Game.gpu.device.createBuffer({
             size: this.instances.byteLength,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
@@ -58,7 +53,7 @@ export class MeshRendererSystem extends System {
         });
 
         this.instanceBindGroup = Game.gpu.device.createBindGroup({
-            layout: Game.gpu.pipelines.instancedBasic.getBindGroupLayout(1),
+            layout: Game.gpu.pipelines.instancedTextured.getBindGroupLayout(1),
             entries: [
                 {
                     binding: cr.INSTANCE_BIND_GROUP_BINDING,
@@ -68,11 +63,16 @@ export class MeshRendererSystem extends System {
         });
     }
 
-    public update(entities: Set<Entity>): void {
-        // return true;
+    
+    // eslint-disable-next-line class-methods-use-this
+    public update(): void { }
+
+    public drawToGbuffer() {
+        const entities = Game.ecs.getEntitiesForSystem(this);
+
         const cs = this.ecs.getSystem(CameraSystem);
         this.gUniforms.set({
-            viewProjection: cs.viewMatrix,
+            viewProjection: cs.viewProjectionMatrix,
             sunDirection: this.lightDirection,
             deltaTime: Game.deltaTime,
             time: Game.time,
@@ -105,7 +105,9 @@ export class MeshRendererSystem extends System {
         let pmt = "" as unknown as MeshType,
             pmk = -1;
         cr.RENDER_PASS_DESCRIPTOR.colorAttachments[0].view =
-            Game.gpu.renderTextureView;
+            Game.gpu.colorTextureView;
+        cr.RENDER_PASS_DESCRIPTOR.colorAttachments[1].view =
+            Game.gpu.normalTextureView;
         cr.RENDER_PASS_DESCRIPTOR.depthStencilAttachment.view =
             Game.gpu.depthTextureView;
         const pass = Game.cmdEncoder.beginRenderPass(cr.RENDER_PASS_DESCRIPTOR);
@@ -118,6 +120,10 @@ export class MeshRendererSystem extends System {
 
         for (const x of sortedEntities) {
             this.instances.set(x.tc.matrix, i * cr.INSTANCE_SIZE);
+            this.instances.set(
+                x.tc.invMatrix,
+                i * cr.INSTANCE_SIZE + cr.INSTANCE_INV_TRANSFORM_OFFSET
+            );
             this.instances.set(
                 x.mc.color,
                 i * cr.INSTANCE_SIZE + cr.INSTANCE_COLOR_OFFSET
@@ -135,11 +141,7 @@ export class MeshRendererSystem extends System {
                     );
                     startInstance = i;
                 }
-                pass.setPipeline(
-                    pmt == "basicColor"
-                        ? Game.gpu.pipelines.instancedBasic
-                        : Game.gpu.pipelines.instancedTextured
-                );
+                pass.setPipeline(Game.gpu.pipelines.instancedTextured);
             }
 
             if (pmk != x.mc.mesh.bufKey) {

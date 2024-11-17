@@ -1,14 +1,16 @@
 
 struct PostCfg {
     inverseProjection: mat4x4f,
+    sunDir: vec3f,
 
-    //TODO: fog
+    fogColor: vec3f,
     fogStart: f32,
     fogEnd: f32,
     fogDensity: f32,
-    fogColor: vec3f,
 
     mode: u32,
+
+    ssaoSamples: array<vec3f,64>,
 };
 
 const bigTri = array(
@@ -19,7 +21,9 @@ const bigTri = array(
 
 @group(0) @binding(0) var<uniform> post: PostCfg;
 @group(0) @binding(1) var color: texture_2d<f32>;
-@group(0) @binding(2) var depth: texture_depth_2d;
+@group(0) @binding(2) var normal: texture_2d<f32>;
+@group(0) @binding(3) var depth: texture_depth_2d;
+@group(0) @binding(4) var lsampler: sampler;
 
 @vertex
 fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
@@ -45,17 +49,25 @@ fn getWorldDepth(p: vec2u) -> f32 {
 
 @fragment
 fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
-    let base = textureLoad(color, vec2<u32>(fragCoord.xy), u32(post.mode));
+    let base = textureLoad(color, vec2<u32>(fragCoord.xy), 0);
+    let nor = normalize(textureLoad(normal, vec2<u32>(fragCoord.xy), 0).xyz * 2.0 - vec3f(1.0, 1.0, 1.0));
     let d = getWorldDepth(vec2u(fragCoord.xy));
 
+    let sunf = max(dot(nor, normalize(post.sunDir)), 0);
+    let diffuse = base.xyz * sunf * 0.7;
+    let ambient = base.xyz * 0.3;
+
     if post.mode == 0 {
-        // How much of the distance is inside the fog
+        // Fog + sun 
         let fogD = clamp(d - post.fogStart, 0, post.fogEnd - post.fogStart);
         let fogFactor = min(fogD * post.fogDensity, 1);
-
-        return vec4f(base.xyz * (1-fogFactor) + post.fogColor * fogFactor, 1.0);
+        return vec4f((diffuse + ambient) * (1 - fogFactor) + post.fogColor * fogFactor, 1.0);
+    } else if post.mode == 1 {
+        // lighting debug
+        return vec4f(sunf, sunf, sunf, 1.0);
     } else {
         // depth debug
         return vec4f(d, d, d, 1);
     }
+    return textureSample(normal,lsampler, vec2f(0,0));
 }

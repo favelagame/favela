@@ -14,7 +14,7 @@ export function createTexturedMeshInstanced(g: WebGpu) {
             bindGroupLayouts: [
                 g.bindGroupLayouts.favelaUniforms,
                 g.bindGroupLayouts.instance,
-                g.bindGroupLayouts.textured
+                g.bindGroupLayouts.textured,
             ],
         }),
         primitive: TRI_LIST_CULLED,
@@ -24,7 +24,7 @@ export function createTexturedMeshInstanced(g: WebGpu) {
         },
         fragment: {
             module,
-            targets: [{ format: g.pFormat }],
+            targets: [{ format: "rgba8unorm" }, { format: "rgba8unorm" }],
         },
         depthStencil: DEPTHTEST_LESS_WRITE,
     });

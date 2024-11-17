@@ -7,6 +7,7 @@ struct HondaUniforms {
 
 struct Instance {
     transform: mat4x4<f32>,
+    invTransform: mat4x4<f32>,
     color: vec3<f32>,
 };
 
@@ -21,30 +22,12 @@ struct VertexOutput {
     @builtin(position) pos: vec4<f32>,
     @location(0) fragNormal: vec3<f32>, 
     @location(1) uv: vec2<f32>, 
-
 };
 
-fn inverseMat3x3(m: mat3x3<f32>) -> mat3x3<f32> {
-    let det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
-
-    if abs(det) < 1e-6 {
-        return mat3x3<f32>(1, 0, 0, 0, 1, 0, 0, 0, 1);
-    }
-
-    return mat3x3<f32>(
-        (m[1][1] * m[2][2] - m[1][2] * m[2][1]) / det,
-        (m[0][2] * m[2][1] - m[0][1] * m[2][2]) / det,
-        (m[0][1] * m[1][2] - m[0][2] * m[1][1]) / det,
-        (m[1][2] * m[2][0] - m[1][0] * m[2][2]) / det,
-        (m[0][0] * m[2][2] - m[0][2] * m[2][0]) / det,
-        (m[0][2] * m[1][0] - m[0][0] * m[1][2]) / det,
-        (m[1][0] * m[2][1] - m[1][1] * m[2][0]) / det,
-        (m[0][1] * m[2][0] - m[0][0] * m[2][1]) / det,
-        (m[0][0] * m[1][1] - m[0][1] * m[1][0]) / det
-    );
+struct Gbuffer {
+    @location(0) baseColor: vec4f,
+    @location(1) normal: vec4f,
 }
-
-
 
 @group(0) @binding(0) var<uniform> uniforms: HondaUniforms;
 @group(1) @binding(0) var<storage, read> instances: array<Instance>;
@@ -54,34 +37,29 @@ fn inverseMat3x3(m: mat3x3<f32>) -> mat3x3<f32> {
 @vertex
 fn vertex_main(input: VertexIn) -> VertexOutput {
     let instance = instances[input.instanceIndex];
-
-    let transformedPos = uniforms.viewProjection * instance.transform * vec4<f32>(input.position, 1.0);
+    let transformedPos = uniforms.viewProjection * instance.transform * vec4f(input.position, 1.0);
+    let normalMatrix = transpose(
+        mat3x3(
+            instance.invTransform[0].xyz,
+            instance.invTransform[1].xyz,
+            instance.invTransform[2].xyz
+        )
+    );
 
     var output: VertexOutput;
     output.pos = transformedPos;
-    
-    output.fragNormal = transpose(inverseMat3x3(mat3x3(
-        instance.transform[0].xyz,
-        instance.transform[1].xyz,
-        instance.transform[2].xyz
-    ))) * input.normal;
+    output.fragNormal = normalize(normalMatrix * input.normal);
     output.uv = input.uv;
-
     return output;
 }
 
 @fragment
-fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    let texture =  textureSample(tBase, tSampler, input.uv);
-    if (texture.w < 0.5) {discard;}
-    let albedo = texture.xyz;
+fn fragment_main(input: VertexOutput) -> Gbuffer {
+    let texture = textureSample(tBase, tSampler, input.uv);
+    if texture.w < 0.5 {discard;}
 
-    let lightDir = normalize(uniforms.sunDirection);
-    let normal = normalize(input.fragNormal);
-
-
-    let diffuse = albedo * max(dot(normal, lightDir), 0) * 0.7;
-    let ambient = albedo * 0.3;
-
-    return vec4<f32>(diffuse + ambient, 1.0);
+    var output: Gbuffer;
+    output.baseColor = texture;
+    output.normal = vec4f((input.fragNormal + vec3f(1, 1, 1)) / 2.0, 1.0);
+    return output;
 }

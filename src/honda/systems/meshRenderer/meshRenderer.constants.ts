@@ -16,7 +16,12 @@ export const RENDER_PASS_DESCRIPTOR = {
             loadOp: "load",
             storeOp: "store",
         },
-    ] as [GPURenderPassColorAttachment],
+        {
+            view: null! as GPUTextureView,
+            loadOp: "load",
+            storeOp: "store",
+        },
+    ] as GPURenderPassColorAttachment[],
 } satisfies GPURenderPassDescriptor;
 
 export const UNIFORM_BIND_GROUP = 0;
@@ -30,7 +35,8 @@ export const UNIFORM_TIME_OFFSET = MAT4F_SIZE + VEC3F_SIZE + 1;
 
 export const INSTANCE_BIND_GROUP = 1;
 export const INSTANCE_BIND_GROUP_BINDING = 0;
-export const INSTANCE_SIZE = MAT4F_SIZE + VEC3F_SIZE;
+export const INSTANCE_SIZE = 2 * MAT4F_SIZE + VEC3F_SIZE;
 
 export const INSTANCE_TRANSFORM_OFFSET = 0;
-export const INSTANCE_COLOR_OFFSET = MAT4F_SIZE;
+export const INSTANCE_INV_TRANSFORM_OFFSET = MAT4F_SIZE;
+export const INSTANCE_COLOR_OFFSET = 2 * MAT4F_SIZE;

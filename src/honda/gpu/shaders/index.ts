@@ -5,8 +5,6 @@ import {
 import { WebGpu } from "..";
 
 type ShaderKey =
-    | "instancedBasicMesh"
-    | "basicMesh"
     | "instancedTexturedMesh"
     | "favelapost";
 

@@ -1,7 +1,6 @@
 import { Game } from "../state";
 import { nn } from "../util";
 import { createBindGroupLayouts } from "./bindGroupLayouts";
-import { createBasicMeshInstanced } from "./pipelines/instancedBasicMesh.pipeline";
 import { createTexturedMeshInstanced } from "./pipelines/instancedTexturedMesh.pipeline";
 import { createPostProcess } from "./pipelines/post.pipeline";
 import { createModules } from "./shaders";
@@ -10,18 +9,19 @@ export class WebGpu {
     private ro: ResizeObserver;
 
     public depthTexture: GPUTexture;
+    public colorTexture: GPUTexture;
     public canvasTexture: GPUTexture;
-    public renderTexture: GPUTexture;
+    public normalTexture: GPUTexture;
 
     public depthTextureView: GPUTextureView;
-    public renderTextureView: GPUTextureView;
+    public colorTextureView: GPUTextureView;
     public canvasTextureView: GPUTextureView;
+    public normalTextureView: GPUTextureView;
 
     public pFormat = navigator.gpu.getPreferredCanvasFormat();
     public shaderModules = createModules(this);
     public bindGroupLayouts = createBindGroupLayouts(this);
     public pipelines = {
-        instancedBasic: createBasicMeshInstanced(this),
         instancedTextured: createTexturedMeshInstanced(this),
         post: createPostProcess(this),
     };
@@ -64,14 +64,15 @@ export class WebGpu {
         public readonly ctx: GPUCanvasContext
     ) {
         console.groupCollapsed("GPU info");
+        console.log('PREFERED FORMAT:', this.pFormat)
         console.info(adapter.info);
         console.log("features", device.features);
         console.info(device.limits);
         console.groupEnd();
 
         this.canvasTexture = this.ctx.getCurrentTexture();
-        this.renderTexture = this.device.createTexture({
-            format: this.pFormat,
+        this.colorTexture = this.device.createTexture({
+            format: 'rgba8unorm',
             size: [canvas.width, canvas.height, 1],
             usage:
                 GPUTextureUsage.RENDER_ATTACHMENT |
@@ -84,8 +85,17 @@ export class WebGpu {
                 GPUTextureUsage.RENDER_ATTACHMENT |
                 GPUTextureUsage.TEXTURE_BINDING,
         });
+        this.normalTexture = this.device.createTexture({
+            format: 'rgba8unorm',
+            size: [canvas.width, canvas.height, 1],
+            usage:
+                GPUTextureUsage.RENDER_ATTACHMENT |
+                GPUTextureUsage.TEXTURE_BINDING,
+        });
+
         this.canvasTextureView = this.canvasTexture.createView();
-        this.renderTextureView = this.renderTexture.createView();
+        this.normalTextureView = this.normalTexture.createView();
+        this.colorTextureView = this.colorTexture.createView();
         this.depthTextureView = this.depthTexture.createView();
 
         this.ro = new ResizeObserver((e) => this.handleResize(e));
@@ -101,9 +111,17 @@ export class WebGpu {
         this.canvas.width = nn(e.devicePixelContentBoxSize?.[0].inlineSize);
         this.canvas.height = nn(e.devicePixelContentBoxSize?.[0].blockSize);
 
+        this.normalTexture.destroy();
         this.depthTexture.destroy();
-        this.renderTexture.destroy();
+        this.colorTexture.destroy();
 
+        this.colorTexture = this.device.createTexture({
+            format: 'rgba8unorm',
+            size: [this.canvas.width, this.canvas.height, 1],
+            usage:
+                GPUTextureUsage.RENDER_ATTACHMENT |
+                GPUTextureUsage.TEXTURE_BINDING,
+        });
         this.depthTexture = this.device.createTexture({
             size: [this.canvas.width, this.canvas.height, 1],
             format: "depth24plus",
@@ -111,16 +129,16 @@ export class WebGpu {
                 GPUTextureUsage.RENDER_ATTACHMENT |
                 GPUTextureUsage.TEXTURE_BINDING,
         });
-
-        this.renderTexture = this.device.createTexture({
-            format: this.pFormat,
+        this.normalTexture = this.device.createTexture({
+            format: 'rgba8unorm',
             size: [this.canvas.width, this.canvas.height, 1],
             usage:
                 GPUTextureUsage.RENDER_ATTACHMENT |
                 GPUTextureUsage.TEXTURE_BINDING,
         });
 
-        this.renderTextureView = this.renderTexture.createView();
+        this.normalTextureView = this.normalTexture.createView();
+        this.colorTextureView = this.colorTexture.createView();
         this.depthTextureView = this.depthTexture.createView();
         this.wasResized = true;
     }

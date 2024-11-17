@@ -13,4 +13,9 @@ export function clamp(min: number, x: number, max: number) {
     return x;
 }
 
+export function nMips(w: number, h: number) {
+    const maxSize = Math.max(w,h);
+    return 1 + Math.log2(maxSize) | 0
+}
+
 export const PI_2 = Math.PI / 2;

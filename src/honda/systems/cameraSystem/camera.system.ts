@@ -7,8 +7,9 @@ export class CameraSystem extends System {
     public componentsRequired = new Set([TransformComponent, CameraComponent]);
 
     public activeCamera: CameraComponent = null!;
+    public activeCameraTransfrom: TransformComponent = null!;
+    public viewProjectionMatrix = mat4.identity();
     public viewMatrix = mat4.identity();
-    protected cameraInverse = mat4.identity();
 
     public update(entities: Set<Entity>): void {
         for (const ent of entities) {
@@ -19,15 +20,15 @@ export class CameraSystem extends System {
             this.activeCamera = cc;
 
             // C^1
-            mat4.fromQuat(quat.inverse(tc.rotation), this.cameraInverse);
+            mat4.fromQuat(quat.inverse(tc.rotation), this.viewMatrix);
             mat4.translate(
-                this.cameraInverse,
+                this.viewMatrix,
                 vec3.negate(tc.translation),
-                this.cameraInverse
+                this.viewMatrix
             );
 
             // V = P * C^-1
-            mat4.multiply(cc.matrix, this.cameraInverse, this.viewMatrix);
+            mat4.multiply(cc.matrix, this.viewMatrix, this.viewProjectionMatrix);
             break;
         }
     }

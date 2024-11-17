@@ -130,19 +130,19 @@ export class ECS {
      * for removal.
      */
     public update(): void {
-        // Update all systems. (Later, we'll add a way to specify the
-        // update order.)
         for (const [system, entities] of this.systems.entries()) {
             Game.perf.measure(`update:${system.constructor.name}`);
             system.update(entities);
             Game.perf.measureEnd();
         }
 
-        // Remove any entities that were marked for deletion during the
-        // update.
         while (this.entitiesToDestroy.length) {
             this.destroyEntity(this.entitiesToDestroy.pop()!);
         }
+    }
+
+    public getEntitiesForSystem(sys: System): Set<number> {
+        return this.systems.get(sys) ?? new Set();
     }
 
     private destroyEntity(entity: Entity): void {

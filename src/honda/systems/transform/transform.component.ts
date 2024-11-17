@@ -4,7 +4,8 @@ import { Mat4, mat4, quat, vec3 } from "wgpu-matrix";
 
 @EcsInjectable()
 export class TransformComponent extends Component {
-    private _matrix: Mat4;
+    public matrix: Mat4;
+    public invMatrix: Mat4;
 
     constructor(
         public translation = vec3.create(),
@@ -12,18 +13,21 @@ export class TransformComponent extends Component {
         public scale = vec3.create(1, 1, 1)
     ) {
         super();
-        this._matrix = mat4.identity();
+        this.matrix = mat4.identity();
+        this.invMatrix = mat4.identity();
         this.updateMatrix();
     }
 
     public updateMatrix() {
-        mat4.identity(this._matrix);
-        mat4.translate(this._matrix, this.translation, this._matrix);
-        mat4.multiply(this._matrix, mat4.fromQuat(this.rotation), this._matrix);
-        mat4.scale(this._matrix, this.scale, this._matrix);
+        mat4.identity(this.matrix);
+        mat4.translate(this.matrix, this.translation, this.matrix);
+        mat4.multiply(this.matrix, mat4.fromQuat(this.rotation), this.matrix);
+        mat4.scale(this.matrix, this.scale, this.matrix);
+        
+        mat4.identity(this.invMatrix);
+        mat4.scale(this.invMatrix, vec3.inverse(this.scale), this.invMatrix);
+        mat4.multiply(this.invMatrix, mat4.fromQuat(quat.inverse(this.rotation)), this.invMatrix);
+        mat4.translate(this.invMatrix, vec3.negate(this.translation), this.invMatrix); 
     }
     
-    public get matrix() {
-        return this._matrix;
-    }
 }

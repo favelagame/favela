@@ -1,3 +1,4 @@
+import { vec3 } from "wgpu-matrix";
 import { CameraSystem } from "../core";
 import { Game } from "../state";
 import { makeStructuredView } from "webgpu-utils";
@@ -5,7 +6,29 @@ import { makeStructuredView } from "webgpu-utils";
 function mode() {
     const map = Game.input.btnMap;
     if (map["KeyB"]) return 1; // wdepth
+    if (map["KeyN"]) return 2; // normal
     return 0;
+}
+
+function generateSampleHemisphere(nSamples: number) {
+    const arr = new Float32Array([nSamples * 3]);
+    const arr2 = [];
+
+    const cVec = vec3.create();
+    for (let i = 1; i < nSamples; i++) {
+        cVec[0] = Math.random() * 2 - 1;
+        cVec[1] = Math.random() * 2 - 1;
+        cVec[2] = Math.random();
+
+        vec3.normalize(cVec, cVec);
+        vec3.scale(cVec, Math.pow(i / nSamples, 2), cVec);
+
+        arr[i * 3 + 0] = cVec[0];
+        arr[i * 3 + 1] = cVec[1];
+        arr[i * 3 + 2] = cVec[2];
+        arr2.push(`vector((0,0,0),(${cVec[0]},${cVec[1]},${cVec[2]}))`);
+    }
+    console.log(arr2.join('\n'))
 }
 
 export class PostprocessPass {
@@ -14,15 +37,22 @@ export class PostprocessPass {
     );
 
     protected settingsGpuBuffer: GPUBuffer;
-    protected bindGroup: GPUBindGroup;
+    protected bindGroup!: GPUBindGroup;
+
+    protected sunDir = vec3.normalize(vec3.create(1, 1, 1));
 
     constructor() {
         this.settingsGpuBuffer = Game.gpu.device.createBuffer({
             size: this.settings.arrayBuffer.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
+        this.createBindGroup();
+        generateSampleHemisphere(64);
+    }
 
+    protected createBindGroup() {
         this.bindGroup = Game.gpu.device.createBindGroup({
+            label: "postbg",
             layout: Game.gpu.pipelines.post.getBindGroupLayout(0),
             entries: [
                 {
@@ -33,11 +63,24 @@ export class PostprocessPass {
                 },
                 {
                     binding: 1,
-                    resource: Game.gpu.renderTextureView,
+                    resource: Game.gpu.colorTextureView,
                 },
                 {
                     binding: 2,
+                    resource: Game.gpu.normalTextureView,
+                },
+                {
+                    binding: 3,
                     resource: Game.gpu.depthTextureView,
+                },
+                {
+                    binding: 4,
+                    resource: Game.gpu.getSampler({
+                        addressModeU: "clamp-to-edge",
+                        addressModeV: "clamp-to-edge",
+                        magFilter: "linear",
+                        minFilter: "linear",
+                    }),
                 },
             ],
         });
@@ -45,37 +88,20 @@ export class PostprocessPass {
 
     apply() {
         if (Game.gpu.wasResized) {
-            this.bindGroup = Game.gpu.device.createBindGroup({
-                layout: Game.gpu.pipelines.post.getBindGroupLayout(0),
-                entries: [
-                    {
-                        binding: 0,
-                        resource: {
-                            buffer: this.settingsGpuBuffer,
-                        },
-                    },
-                    {
-                        binding: 1,
-                        resource: Game.gpu.renderTextureView,
-                    },
-                    {
-                        binding: 2,
-                        resource: Game.gpu.depthTextureView,
-                    },
-                ],
-            });
+            this.createBindGroup();
         }
 
-        const tf = Math.sin(Game.time / 1000) + 1;
-        const tf2 = Math.cos(Game.time / 100) / 2 + 1;
         this.settings.set({
             mode: mode(),
+
+            sunDir: this.sunDir,
+
             inverseProjection:
                 Game.ecs.getSystem(CameraSystem).activeCamera.invMatrix,
-            fogStart: tf,
-            fogEnd: tf + 1,
+            fogStart: 0,
+            fogEnd: 3,
             fogDensity: 1,
-            fogColor: [0.6, tf2, 0.6],
+            fogColor: [0.6, 0.6, 0.6],
         });
 
         const post = Game.cmdEncoder.beginRenderPass({
