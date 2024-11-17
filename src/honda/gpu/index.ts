@@ -2,21 +2,24 @@ import { Game } from "../state";
 import { nn } from "../util";
 import { createBindGroupLayouts } from "./bindGroupLayouts";
 import { createTexturedMeshInstanced } from "./pipelines/instancedTexturedMesh.pipeline";
-import { createPostProcess } from "./pipelines/post.pipeline";
+import { createPostProcess } from "./pipelines/postprocess.pipeline";
+import { createSSAO } from "./pipelines/ssao.pipeline";
 import { createModules } from "./shaders";
 
 export class WebGpu {
     private ro: ResizeObserver;
 
-    public depthTexture: GPUTexture;
-    public colorTexture: GPUTexture;
-    public canvasTexture: GPUTexture;
-    public normalTexture: GPUTexture;
+    public ssaoTexture!: GPUTexture;
+    public depthTexture!: GPUTexture;
+    public colorTexture!: GPUTexture;
+    public canvasTexture!: GPUTexture;
+    public normalTexture!: GPUTexture;
 
-    public depthTextureView: GPUTextureView;
-    public colorTextureView: GPUTextureView;
-    public canvasTextureView: GPUTextureView;
-    public normalTextureView: GPUTextureView;
+    public ssaoTextureView!: GPUTextureView;
+    public depthTextureView!: GPUTextureView;
+    public colorTextureView!: GPUTextureView;
+    public canvasTextureView!: GPUTextureView;
+    public normalTextureView!: GPUTextureView;
 
     public pFormat = navigator.gpu.getPreferredCanvasFormat();
     public shaderModules = createModules(this);
@@ -24,6 +27,7 @@ export class WebGpu {
     public pipelines = {
         instancedTextured: createTexturedMeshInstanced(this),
         post: createPostProcess(this),
+        ssao: createSSAO(this),
     };
 
     public wasResized = false;
@@ -64,40 +68,13 @@ export class WebGpu {
         public readonly ctx: GPUCanvasContext
     ) {
         console.groupCollapsed("GPU info");
-        console.log('PREFERED FORMAT:', this.pFormat)
+        console.log("PREFERED FORMAT:", this.pFormat);
         console.info(adapter.info);
         console.log("features", device.features);
         console.info(device.limits);
         console.groupEnd();
 
-        this.canvasTexture = this.ctx.getCurrentTexture();
-        this.colorTexture = this.device.createTexture({
-            format: 'rgba8unorm',
-            size: [canvas.width, canvas.height, 1],
-            usage:
-                GPUTextureUsage.RENDER_ATTACHMENT |
-                GPUTextureUsage.TEXTURE_BINDING,
-        });
-        this.depthTexture = this.device.createTexture({
-            size: [canvas.width, canvas.height, 1],
-            format: "depth24plus",
-            usage:
-                GPUTextureUsage.RENDER_ATTACHMENT |
-                GPUTextureUsage.TEXTURE_BINDING,
-        });
-        this.normalTexture = this.device.createTexture({
-            format: 'rgba8unorm',
-            size: [canvas.width, canvas.height, 1],
-            usage:
-                GPUTextureUsage.RENDER_ATTACHMENT |
-                GPUTextureUsage.TEXTURE_BINDING,
-        });
-
-        this.canvasTextureView = this.canvasTexture.createView();
-        this.normalTextureView = this.normalTexture.createView();
-        this.colorTextureView = this.colorTexture.createView();
-        this.depthTextureView = this.depthTexture.createView();
-
+        this.createTexturesAndViews();
         this.ro = new ResizeObserver((e) => this.handleResize(e));
         // FIXME: Safari (matter reference) doesn't support this.
         this.ro.observe(canvas, { box: "device-pixel-content-box" });
@@ -107,39 +84,50 @@ export class WebGpu {
         return this.canvas.width / this.canvas.height;
     }
 
+    protected createTexturesAndViews() {
+        const size = [this.canvas.width, this.canvas.height, 1];
+        const usage =
+            GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING;
+
+        this.ssaoTexture?.destroy();
+        this.depthTexture?.destroy();
+        this.colorTexture?.destroy();
+        this.normalTexture?.destroy();
+
+        this.ssaoTexture = this.device.createTexture({
+            format: "r8unorm",
+            size,
+            usage,
+        });
+        this.colorTexture = this.device.createTexture({
+            format: "rgba8unorm",
+            size,
+            usage,
+        });
+        this.depthTexture = this.device.createTexture({
+            size,
+            format: "depth24plus",
+            usage,
+        });
+        this.normalTexture = this.device.createTexture({
+            format: "rgba8unorm",
+            size,
+            usage,
+        });
+        this.canvasTexture = this.ctx.getCurrentTexture();
+
+        this.ssaoTextureView = this.ssaoTexture.createView();
+        this.depthTextureView = this.depthTexture.createView();
+        this.colorTextureView = this.colorTexture.createView();
+        this.normalTextureView = this.normalTexture.createView();
+        this.canvasTextureView = this.canvasTexture.createView();
+    }
+
     private handleResize([e]: ResizeObserverEntry[]) {
         this.canvas.width = nn(e.devicePixelContentBoxSize?.[0].inlineSize);
         this.canvas.height = nn(e.devicePixelContentBoxSize?.[0].blockSize);
 
-        this.normalTexture.destroy();
-        this.depthTexture.destroy();
-        this.colorTexture.destroy();
-
-        this.colorTexture = this.device.createTexture({
-            format: 'rgba8unorm',
-            size: [this.canvas.width, this.canvas.height, 1],
-            usage:
-                GPUTextureUsage.RENDER_ATTACHMENT |
-                GPUTextureUsage.TEXTURE_BINDING,
-        });
-        this.depthTexture = this.device.createTexture({
-            size: [this.canvas.width, this.canvas.height, 1],
-            format: "depth24plus",
-            usage:
-                GPUTextureUsage.RENDER_ATTACHMENT |
-                GPUTextureUsage.TEXTURE_BINDING,
-        });
-        this.normalTexture = this.device.createTexture({
-            format: 'rgba8unorm',
-            size: [this.canvas.width, this.canvas.height, 1],
-            usage:
-                GPUTextureUsage.RENDER_ATTACHMENT |
-                GPUTextureUsage.TEXTURE_BINDING,
-        });
-
-        this.normalTextureView = this.normalTexture.createView();
-        this.colorTextureView = this.colorTexture.createView();
-        this.depthTextureView = this.depthTexture.createView();
+        this.createTexturesAndViews();
         this.wasResized = true;
     }
 

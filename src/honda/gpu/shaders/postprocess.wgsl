@@ -24,6 +24,7 @@ const bigTri = array(
 @group(0) @binding(2) var normal: texture_2d<f32>;
 @group(0) @binding(3) var depth: texture_depth_2d;
 @group(0) @binding(4) var lsampler: sampler;
+@group(0) @binding(5) var ssao: texture_2d<f32>;
 
 @vertex
 fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
@@ -52,22 +53,27 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
     let base = textureLoad(color, vec2<u32>(fragCoord.xy), 0);
     let nor = normalize(textureLoad(normal, vec2<u32>(fragCoord.xy), 0).xyz * 2.0 - vec3f(1.0, 1.0, 1.0));
     let d = getWorldDepth(vec2u(fragCoord.xy));
+    let o = textureLoad(ssao, vec2<u32>(fragCoord.xy), 0).x;
 
     let sunf = max(dot(nor, normalize(post.sunDir)), 0);
     let diffuse = base.xyz * sunf * 0.7;
     let ambient = base.xyz * 0.3;
 
     if post.mode == 0 {
+        // Fog + sun + AO
+        let fogD = clamp(d - post.fogStart, 0, post.fogEnd - post.fogStart);
+        let fogFactor = min(fogD * post.fogDensity, 1);
+        return vec4f(((diffuse + ambient) * o ) * (1 - fogFactor) + post.fogColor * fogFactor, 1.0);
+    } else if post.mode == 1 {
         // Fog + sun 
         let fogD = clamp(d - post.fogStart, 0, post.fogEnd - post.fogStart);
         let fogFactor = min(fogD * post.fogDensity, 1);
-        return vec4f((diffuse + ambient) * (1 - fogFactor) + post.fogColor * fogFactor, 1.0);
-    } else if post.mode == 1 {
-        // lighting debug
-        return vec4f(sunf, sunf, sunf, 1.0);
+        return vec4f(((diffuse + ambient)) * (1 - fogFactor) + post.fogColor * fogFactor, 1.0);
+    } else if post.mode == 2 {
+
+        return vec4f(o, o, o, 1.0);
     } else {
         // depth debug
         return vec4f(d, d, d, 1);
     }
-    return textureSample(normal,lsampler, vec2f(0,0));
 }

@@ -1,39 +1,19 @@
 import { vec3 } from "wgpu-matrix";
-import { CameraSystem } from "../core";
-import { Game } from "../state";
+import { CameraSystem } from "../../core";
+import { Game } from "../../state";
 import { makeStructuredView } from "webgpu-utils";
 
 function mode() {
     const map = Game.input.btnMap;
     if (map["KeyB"]) return 1; // wdepth
     if (map["KeyN"]) return 2; // normal
+    if (map["KeyM"]) return 3; // normal
     return 0;
-}
-
-function generateSampleHemisphere(nSamples: number) {
-    const arr = new Float32Array([nSamples * 3]);
-    const arr2 = [];
-
-    const cVec = vec3.create();
-    for (let i = 1; i < nSamples; i++) {
-        cVec[0] = Math.random() * 2 - 1;
-        cVec[1] = Math.random() * 2 - 1;
-        cVec[2] = Math.random();
-
-        vec3.normalize(cVec, cVec);
-        vec3.scale(cVec, Math.pow(i / nSamples, 2), cVec);
-
-        arr[i * 3 + 0] = cVec[0];
-        arr[i * 3 + 1] = cVec[1];
-        arr[i * 3 + 2] = cVec[2];
-        arr2.push(`vector((0,0,0),(${cVec[0]},${cVec[1]},${cVec[2]}))`);
-    }
-    console.log(arr2.join('\n'))
 }
 
 export class PostprocessPass {
     protected settings = makeStructuredView(
-        Game.gpu.shaderModules.favelapost.defs.structs["PostCfg"]
+        Game.gpu.shaderModules.postprocess.defs.structs["PostCfg"]
     );
 
     protected settingsGpuBuffer: GPUBuffer;
@@ -47,13 +27,12 @@ export class PostprocessPass {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
         this.createBindGroup();
-        generateSampleHemisphere(64);
     }
 
     protected createBindGroup() {
         this.bindGroup = Game.gpu.device.createBindGroup({
             label: "postbg",
-            layout: Game.gpu.pipelines.post.getBindGroupLayout(0),
+            layout: Game.gpu.bindGroupLayouts.post,
             entries: [
                 {
                     binding: 0,
@@ -82,6 +61,10 @@ export class PostprocessPass {
                         minFilter: "linear",
                     }),
                 },
+                {
+                    binding: 5,
+                    resource: Game.gpu.ssaoTextureView,
+                },
             ],
         });
     }
@@ -100,7 +83,7 @@ export class PostprocessPass {
                 Game.ecs.getSystem(CameraSystem).activeCamera.invMatrix,
             fogStart: 0,
             fogEnd: 3,
-            fogDensity: 1,
+            fogDensity: 0.01,
             fogColor: [0.6, 0.6, 0.6],
         });
 

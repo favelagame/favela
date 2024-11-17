@@ -2,11 +2,13 @@ import { WebGpu } from "..";
 import { TRI_LIST_CULLED } from "./constants";
 
 export function createPostProcess(g: WebGpu) {
-    const { module } = g.shaderModules.favelapost;
+    const { module } = g.shaderModules.postprocess;
 
     return g.device.createRenderPipeline({
         label: "post",
-        layout: "auto",
+        layout: g.device.createPipelineLayout({
+            bindGroupLayouts: [g.bindGroupLayouts.post],
+        }),
         primitive: TRI_LIST_CULLED,
         vertex: {
             module,

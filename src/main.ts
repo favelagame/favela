@@ -6,8 +6,9 @@ import { setupScene } from "./scene";
 import { Input } from "./honda/input";
 import { perfRenderer } from "./honda/util/perf";
 import { setError, setStatus } from "./honda/util/status";
-import { PostprocessPass } from "./honda/gpu/post.pass";
+import { PostprocessPass } from "./honda/gpu/passes/post.pass";
 import { MeshRendererSystem } from "./honda/systems/meshRenderer";
+import { SSAOPass } from "./honda/gpu/passes/ssao.pass";
 
 const canvas = document.querySelector("canvas")!;
 try {
@@ -20,7 +21,8 @@ try {
 Game.input = new Input(canvas);
 const ecs = new ECS();
 Game.ecs = ecs;
-const pp = new PostprocessPass();
+const ssao = new SSAOPass();
+const postprocess = new PostprocessPass();
 await setupScene(ecs);
 setStatus(undefined);
 Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
@@ -61,7 +63,8 @@ function frame(t: number) {
     })
     .end();
     ecs.getSystem(MeshRendererSystem).drawToGbuffer();
-    pp.apply();
+    ssao.apply();
+    postprocess.apply();
 
     Game.input.endFrame();
     Game.gpu.pushQueue();
