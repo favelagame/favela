@@ -2,7 +2,12 @@
 struct SSAOCfg {
     projection: mat4x4f,
     inverseProjection: mat4x4f,
-    ssaoSamples: array<vec3f,64>,
+    camera: mat4x4f,
+    samples: array<vec3f,64>,
+
+    kernelSize: u32,
+    radius: f32,
+    bias: f32,
 };
 
 const bigTri = array(
@@ -17,9 +22,6 @@ const bigTri = array(
 @group(0) @binding(3) var depth: texture_depth_2d;
 @group(0) @binding(4) var lsampler: sampler;
 
-const kernelSize = 64;
-const radius = 0.5;
-const bias = 0.025;
 
 @vertex
 fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
@@ -43,8 +45,14 @@ fn reconstructPosition(p: vec2u) -> vec3f {
 
 @fragment
 fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
+    let norMat = mat3x3f(
+        ssao.camera[0].xyz,
+        ssao.camera[2].xyz,
+        ssao.camera[3].xyz,
+    );
+
     let positionVec = reconstructPosition(vec2<u32>(fragCoord.xy));
-    let normalVec = normalize(textureLoad(normal, vec2<u32>(fragCoord.xy), 0).xyz * 2.0 - vec3f(1.0, 1.0, 1.0));
+    let normalVec = normalize((textureLoad(normal, vec2<u32>(fragCoord.xy), 0).xyz * 2.0 - vec3f(1.0, 1.0, 1.0)) * norMat);
     let randomVec = textureLoad(noise, vec2<u32>(u32(fragCoord.x) & 0x3, u32(fragCoord.y) & 0x3), 0).xyz;
 
     let tangent = normalize(randomVec - normalVec * dot(randomVec, normalVec));
@@ -55,18 +63,18 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
 
 
     var occlusion = 0.0;
-    for (var i = 0; i < kernelSize; i++) {
-        var samplePos = tbn * ssao.ssaoSamples[i];
-        samplePos = positionVec + samplePos * radius;
+    for (var i = 0u; i < ssao.kernelSize; i++) {
+        var samplePos = tbn * ssao.samples[i];
+        samplePos = positionVec + samplePos * ssao.radius;
 
         let offset_ = ssao.projection * vec4f(samplePos, 1.0);
         let offset = (offset_.xyz / offset_.w) * 0.5 + 0.5;
         let sampleDepth = reconstructPosition(vec2u(u32(offset.x * dim.x), u32((1.0 - offset.y) * dim.y))).z;
-        let rangeCheck = smoothstep(0.0, 1.0, radius / abs(positionVec.z - sampleDepth));
-        if sampleDepth >= samplePos.z + bias {
+        let rangeCheck = smoothstep(0.0, 1.0, ssao.radius / abs(positionVec.z - sampleDepth));
+        if sampleDepth >= samplePos.z + ssao.bias {
             occlusion += 1.0 * rangeCheck;
         }
     }
 
-    return vec4f(1.0 - (occlusion / f32(kernelSize)), 0.0, 0.0, 0.0);
+    return vec4f(1.0 - (occlusion / f32(ssao.kernelSize)), 0.0, 0.0, 0.0);
 }

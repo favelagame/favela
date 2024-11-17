@@ -18,6 +18,7 @@ export class CameraSystem extends System {
             if (!cc.active) continue;
             const tc = comps.get(TransformComponent);
             this.activeCamera = cc;
+            this.activeCameraTransfrom = tc;
 
             // C^1
             mat4.fromQuat(quat.inverse(tc.rotation), this.viewMatrix);

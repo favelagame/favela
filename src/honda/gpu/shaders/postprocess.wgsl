@@ -10,6 +10,9 @@ struct PostCfg {
 
     mode: u32,
 
+    ambientRatio: f32,
+    occlusionPower: f32,
+
     ssaoSamples: array<vec3f,64>,
 };
 
@@ -56,14 +59,14 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
     let o = textureLoad(ssao, vec2<u32>(fragCoord.xy), 0).x;
 
     let sunf = max(dot(nor, normalize(post.sunDir)), 0);
-    let diffuse = base.xyz * sunf * 0.7;
-    let ambient = base.xyz * 0.3;
+    let diffuse = base.xyz * sunf * (1 - post.ambientRatio);
+    let ambient = base.xyz * post.ambientRatio;
 
     if post.mode == 0 {
         // Fog + sun + AO
         let fogD = clamp(d - post.fogStart, 0, post.fogEnd - post.fogStart);
         let fogFactor = min(fogD * post.fogDensity, 1);
-        return vec4f(((diffuse + ambient) * o ) * (1 - fogFactor) + post.fogColor * fogFactor, 1.0);
+        return vec4f(((diffuse + ambient) * pow(o, post.occlusionPower)) * (1 - fogFactor) + post.fogColor * fogFactor, 1.0);
     } else if post.mode == 1 {
         // Fog + sun 
         let fogD = clamp(d - post.fogStart, 0, post.fogEnd - post.fogStart);

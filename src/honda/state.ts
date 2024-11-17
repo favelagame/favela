@@ -4,6 +4,7 @@ import type { WebGpu } from "./gpu";
 import type { Input } from "./input";
 import type { ECS } from "./ecs";
 import { Perf } from "./util/perf";
+import GUI from "muigui";
 
 export const Game = {
     ecs: null! as ECS,
@@ -14,6 +15,7 @@ export const Game = {
     cameraMatrix: mat4.create(),
     input: null! as Input,
     perf: new Perf(),
+    gui: new GUI(),
 };
 
 //@ts-expect-error expose state to the console

@@ -46,6 +46,12 @@ export class SSAOPass {
     protected noiseTextureView: GPUTextureView;
     protected ssaoSamples = generateSampleHemisphere(64);
 
+    protected guiSettings = {
+        kernelSize: 64,
+        radius: 0.5,
+        bias: 0.025,
+    };
+
     protected createBindGroup() {
         this.bindGroup = Game.gpu.device.createBindGroup({
             label: "ssaobg",
@@ -105,6 +111,11 @@ export class SSAOPass {
             },
             [4, 4, 1]
         );
+
+        const p = Game.gui.addFolder("SSAO");
+        p.add(this.guiSettings, "kernelSize", 1, 64);
+        p.add(this.guiSettings, "radius", 0, 1);
+        p.add(this.guiSettings, "bias", 0.0001, 0.1);
     }
 
     apply() {
@@ -112,11 +123,15 @@ export class SSAOPass {
             this.createBindGroup();
         }
 
-        const camera = Game.ecs.getSystem(CameraSystem).activeCamera;
+        const cameraSys = Game.ecs.getSystem(CameraSystem);
+        const camera = cameraSys.activeCamera
         this.settings.set({
             projection: camera.matrix,
             inverseProjection: camera.invMatrix,
-            ssaoSamples: this.ssaoSamples,
+            samples: this.ssaoSamples,
+            camera: cameraSys.activeCameraTransfrom.matrix,
+
+            ...this.guiSettings,
         });
 
         const post = Game.cmdEncoder.beginRenderPass({

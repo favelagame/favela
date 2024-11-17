@@ -21,12 +21,32 @@ export class PostprocessPass {
 
     protected sunDir = vec3.normalize(vec3.create(1, 1, 1));
 
+    protected guiSettings = {
+        fogStart: 0,
+        fogEnd: 3,
+        fogDensity: 0.01,
+        fogColor: [0.6, 0.6, 0.6],
+
+        ambientRatio: 0.3,
+        occlusionPower: 1,
+    };
+
     constructor() {
+        const p = Game.gui.addFolder("Postprocess");
+        const f = p.addFolder("Fog");
+        f.add(this.guiSettings, "fogStart", 0, 100);
+        f.add(this.guiSettings, "fogEnd", 0, 100);
+        f.add(this.guiSettings, "fogDensity", 0, 5);
+        f.addColor(this.guiSettings, "fogColor");
+
+        const b = p.addFolder("Shading");
+        b.add(this.guiSettings, 'ambientRatio', 0, 1);
+        b.add(this.guiSettings, 'occlusionPower', 0.5, 5);
+
         this.settingsGpuBuffer = Game.gpu.device.createBuffer({
             size: this.settings.arrayBuffer.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
-        this.createBindGroup();
     }
 
     protected createBindGroup() {
@@ -81,10 +101,7 @@ export class PostprocessPass {
 
             inverseProjection:
                 Game.ecs.getSystem(CameraSystem).activeCamera.invMatrix,
-            fogStart: 0,
-            fogEnd: 3,
-            fogDensity: 0.01,
-            fogColor: [0.6, 0.6, 0.6],
+            ...this.guiSettings,
         });
 
         const post = Game.cmdEncoder.beginRenderPass({
