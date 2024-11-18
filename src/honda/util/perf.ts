@@ -12,6 +12,9 @@ export class Perf {
     protected labelTimes = {} as Record<string, number>;
     protected labelStart = 0;
 
+    protected gpuAccumulator = new Map<string, number>();
+    protected gpuFrameCount = 0;
+
     constructor() {}
 
     public startFrame() {
@@ -66,13 +69,40 @@ export class Perf {
 
         return ts;
     }
+
+    public sumbitGpuTimestamps(
+        labels: Record<number, string>,
+        timestamps: BigInt64Array,
+        n: number
+    ) {
+        for (let i = 0; i < n; i++) {
+            const c = this.gpuAccumulator.get(labels[i]) ?? 0;
+            this.gpuAccumulator.set(
+                labels[i],
+                c + Number(timestamps[2 * i + 1] - timestamps[2 * i])
+            );
+        }
+        this.gpuFrameCount++;
+    }
+
+    public getGpuStats() {
+        const stats = Array.from(this.gpuAccumulator.entries()).map(
+            ([label, time]) =>
+                [label, time / this.gpuFrameCount] as [string, number]
+        );
+
+        this.gpuAccumulator.clear();
+        this.gpuFrameCount = 0;
+        return stats.sort((a, b) => b[1] - a[1]);
+    }
 }
 
 export function perfRenderer(
     fps: HTMLSpanElement,
     mspf: HTMLSpanElement,
     ents: HTMLSpanElement,
-    measured: HTMLPreElement
+    cpu: HTMLPreElement,
+    gpu: HTMLPreElement
 ) {
     return () => {
         fps.innerText = Game.perf.fps.toFixed(1).padStart(5, " ");
@@ -80,8 +110,18 @@ export function perfRenderer(
         ents.innerText = Game.ecs.entityCount.toString().padStart(4, " ");
 
         const m = Game.perf.measured();
-        measured.innerText = m
+        cpu.innerText = m
             .map(([n, t]) => `${n.padEnd(32)}${t.toFixed(2).padStart(6, " ")}`)
+            .join("\n");
+
+        const g = Game.perf.getGpuStats();
+        gpu.innerText = g
+            .map(
+                ([n, t]) =>
+                    `${n.padEnd(30)} ${(t / 1000)
+                        .toFixed(0)
+                        .padStart(6, " ")}us`
+            )
             .join("\n");
     };
 }

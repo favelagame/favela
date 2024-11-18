@@ -6,6 +6,9 @@ import { createPostProcess } from "./pipelines/postprocess.pipeline";
 import { createSSAO } from "./pipelines/ssao.pipeline";
 import { createModules } from "./shaders";
 
+const N_MAP_BUFFERS = 4;
+const TIMESTAMP_PASS_CAPACITY = 16;
+
 export class WebGpu {
     private ro: ResizeObserver;
 
@@ -36,6 +39,16 @@ export class WebGpu {
 
     protected gpuSamplerMap: Record<string, GPUSampler> = {};
 
+    protected querySet: GPUQuerySet;
+    protected queryBuffer: GPUBuffer;
+    protected acitveMapBuffer = 0;
+    protected queryMapBuffers: GPUBuffer[];
+    protected queryIndex: number = 0;
+    // FIXME(mbabnik): Due to GPUs being a scam, this can get desynced,
+    // if a frame has different ammount of passes than the previous one.
+    // Due to GPUs being a scam (taking time to map memory). 
+    protected timestampLabels: Record<number, string> = {};
+
     static async obtainForCanvas(canvas: HTMLCanvasElement) {
         const adapter = nn(
             await navigator.gpu.requestAdapter({
@@ -44,7 +57,9 @@ export class WebGpu {
             "Your browser doesn't support WebGPU"
         );
         const device = nn(
-            await adapter.requestDevice(),
+            await adapter.requestDevice({
+                requiredFeatures: ["timestamp-query"],
+            }),
             "Couldn't obtain WebGPU device"
         );
         const wg = nn(
@@ -78,6 +93,28 @@ export class WebGpu {
 
         this.createTexturesAndViews();
         this.ro = new ResizeObserver((e) => this.handleResize(e));
+
+        this.querySet = device.createQuerySet({
+            type: "timestamp",
+            count: 2 * TIMESTAMP_PASS_CAPACITY,
+        });
+        this.queryBuffer = device.createBuffer({
+            size: 8 * 2 * TIMESTAMP_PASS_CAPACITY,
+            usage:
+                GPUBufferUsage.QUERY_RESOLVE |
+                GPUBufferUsage.STORAGE |
+                GPUBufferUsage.COPY_SRC,
+        });
+
+        // I wish there was a better way
+        this.queryMapBuffers = [...Array(N_MAP_BUFFERS)].map((_, i) =>
+            device.createBuffer({
+                label: `MapBuffer${i + 1}`,
+                size: 8 * 2 * TIMESTAMP_PASS_CAPACITY,
+                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+            })
+        );
+
         // FIXME: Safari (matter reference) doesn't support this.
         this.ro.observe(canvas, { box: "device-pixel-content-box" });
     }
@@ -147,10 +184,41 @@ export class WebGpu {
             this.canvasTexture = this.ctx.getCurrentTexture();
             this.canvasTextureView = this.canvasTexture.createView();
         }
+        this.queryIndex = 0;
     }
 
     public pushQueue() {
+        Game.cmdEncoder.resolveQuerySet(
+            this.querySet,
+            0,
+            this.queryIndex,
+            this.queryBuffer,
+            0
+        );
+
+        const activeBuffer = this.queryMapBuffers[this.acitveMapBuffer];
+
+        if (this.queryIndex != 0 && this.queryBuffer.mapState === "unmapped") {
+            Game.cmdEncoder.copyBufferToBuffer(
+                this.queryBuffer,
+                0,
+                activeBuffer,
+                0,
+                this.queryBuffer.size
+            );
+        }
         this.device.queue.submit([Game.cmdEncoder.finish()]);
+
+        if (this.queryIndex != 0 && activeBuffer.mapState === "unmapped") {
+            this.acitveMapBuffer++;
+            this.acitveMapBuffer %= N_MAP_BUFFERS;
+            activeBuffer.mapAsync(GPUMapMode.READ).then(() => {
+                const times = new BigInt64Array(activeBuffer.getMappedRange());
+                Game.perf.sumbitGpuTimestamps(this.timestampLabels, times, this.queryIndex>>1)
+                activeBuffer.unmap();
+            });
+        }
+
         Game.cmdEncoder = this.device.createCommandEncoder();
     }
 
@@ -161,5 +229,19 @@ export class WebGpu {
 
         this.gpuSamplerMap[key] = h = this.device.createSampler(d);
         return h;
+    }
+
+    public timestamp(label: string): GPURenderPassTimestampWrites {
+        if (this.queryIndex + 2 > TIMESTAMP_PASS_CAPACITY) {
+            throw new Error("Not enough space for timestamps");
+        }
+
+        this.timestampLabels[this.queryIndex >> 1] = label;
+
+        return {
+            querySet: this.querySet,
+            beginningOfPassWriteIndex: this.queryIndex++,
+            endOfPassWriteIndex: this.queryIndex++,
+        } satisfies GPURenderPassTimestampWrites;
     }
 }

@@ -144,6 +144,7 @@ export class SSAOPass {
                     clearValue: [0, 0, 0, 0],
                 },
             ],
+            timestampWrites: Game.gpu.timestamp("ssao"),
         });
 
         post.setPipeline(Game.gpu.pipelines.ssao);

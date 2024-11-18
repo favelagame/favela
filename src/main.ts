@@ -79,7 +79,8 @@ setInterval(
         $<HTMLSpanElement>("#fps")!,
         $<HTMLSpanElement>("#mspf")!,
         $<HTMLSpanElement>("#ents")!,
-        $<HTMLPreElement>("#measured")!
+        $<HTMLPreElement>("#measured")!,
+        $<HTMLPreElement>("#measured-gpu")!
     ),
     500
 );

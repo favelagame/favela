@@ -116,6 +116,7 @@ export class PostprocessPass {
                     clearValue: [1, 0, 1, 1],
                 },
             ],
+            timestampWrites: Game.gpu.timestamp("main"),
         });
 
         post.setPipeline(Game.gpu.pipelines.post);

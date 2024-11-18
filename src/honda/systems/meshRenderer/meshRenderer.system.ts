@@ -1,10 +1,5 @@
 import { Vec3 } from "wgpu-matrix";
-import {
-    TransformComponent,
-    Game,
-    System,
-    CameraSystem,
-} from "@/honda/core";
+import { TransformComponent, Game, System, CameraSystem } from "@/honda/core";
 import { MeshComponent } from "./meshRenderer.component";
 import * as cr from "./meshRenderer.constants";
 import { makeStructuredView } from "webgpu-utils";
@@ -63,9 +58,8 @@ export class MeshRendererSystem extends System {
         });
     }
 
-    
     // eslint-disable-next-line class-methods-use-this
-    public update(): void { }
+    public update(): void {}
 
     public drawToGbuffer() {
         const entities = Game.ecs.getEntitiesForSystem(this);
@@ -104,6 +98,9 @@ export class MeshRendererSystem extends System {
         // just put the fries in the bag
         let pmt = "" as unknown as MeshType,
             pmk = -1;
+
+        (cr.RENDER_PASS_DESCRIPTOR as GPURenderPassDescriptor).timestampWrites =
+            Game.gpu.timestamp("MeshRenderer");
         cr.RENDER_PASS_DESCRIPTOR.colorAttachments[0].view =
             Game.gpu.colorTextureView;
         cr.RENDER_PASS_DESCRIPTOR.colorAttachments[1].view =
