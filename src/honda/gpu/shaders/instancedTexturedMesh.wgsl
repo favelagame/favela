@@ -33,6 +33,7 @@ struct Gbuffer {
 @group(1) @binding(0) var<storage, read> instances: array<Instance>;
 @group(2) @binding(0) var tSampler: sampler;
 @group(2) @binding(1) var tBase: texture_2d<f32>;
+@group(2) @binding(1) var tNorm: texture_2d<f32>;
 
 @vertex
 fn vertex_main(input: VertexIn) -> VertexOutput {

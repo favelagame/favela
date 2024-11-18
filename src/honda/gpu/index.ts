@@ -32,6 +32,8 @@ export class WebGpu {
 
     public wasResized = false;
 
+    public renderScale = 1;
+
     protected gpuSamplerMap: Record<string, GPUSampler> = {};
 
     static async obtainForCanvas(canvas: HTMLCanvasElement) {
@@ -124,8 +126,16 @@ export class WebGpu {
     }
 
     private handleResize([e]: ResizeObserverEntry[]) {
-        this.canvas.width = nn(e.devicePixelContentBoxSize?.[0].inlineSize);
-        this.canvas.height = nn(e.devicePixelContentBoxSize?.[0].blockSize);
+        this.canvas.width =
+            Math.round(
+                nn(e.devicePixelContentBoxSize?.[0].inlineSize) *
+                    this.renderScale
+            ) & ~1;
+        this.canvas.height =
+            Math.round(
+                nn(e.devicePixelContentBoxSize?.[0].blockSize) *
+                    this.renderScale
+            ) & ~1;
 
         this.createTexturesAndViews();
         this.wasResized = true;

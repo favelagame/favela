@@ -39,6 +39,11 @@ export function createBindGroupLayouts(g: WebGpu) {
                     visibility: GPUShaderStage.FRAGMENT,
                     texture: {},
                 },
+                {
+                    binding: 2,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: {},
+                },
             ],
         }),
         post: g.device.createBindGroupLayout({

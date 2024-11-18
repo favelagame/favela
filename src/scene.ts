@@ -57,7 +57,8 @@ class FlyCameraScript extends HondaBehavior {
             vec3.normalize(this.moveBaseVec, this.moveBaseVec);
             vec3.mulScalar(
                 this.moveBaseVec,
-                (Game.deltaTime / 1000) * (Game.input.btnMap["ShiftLeft"] ? 5 : 1),
+                (Game.deltaTime / 1000) *
+                    (Game.input.btnMap["ShiftLeft"] ? 5 : 1),
                 this.moveBaseVec
             );
 
@@ -103,20 +104,22 @@ export async function setupScene(ecs: ECS) {
     ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));
     ecs.addComponent(camera, new CameraComponent(70, 0.01, 100));
     ecs.addComponent(camera, new ScriptComponent(FlyCameraScript));
-    // ecs.addComponent(camera, new ScriptComponent(RotationScript));
 
     const meshCache: Partial<Record<number, GpuMeshV1>> = {};
     for (const node of sponza.json.nodes) {
         if (node.matrix) continue;
-        if (!node.mesh) continue;
+        if (typeof node.mesh !== "number") continue;
 
         const e = ecs.addEntity();
 
         let mesh = meshCache[node.mesh];
         if (!mesh) {
-            meshCache[node.mesh] = mesh = new GpuTexturedMeshV1(
-                sponza.getTexturedMeshV1(node.mesh)
-            );
+            const m = sponza.getTexturedMeshV2(node.mesh);
+            meshCache[node.mesh] = mesh = new GpuTexturedMeshV1(m);
+
+            if (!m.normalTex) {
+                console.warn(e, node.name, m.name, "has no normalmap");
+            }
         }
 
         ecs.addComponent(

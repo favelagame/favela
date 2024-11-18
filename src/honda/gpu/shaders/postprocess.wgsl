@@ -33,8 +33,7 @@ fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
     return vec4f(bigTri[index], 0, 1);
 }
 
-fn getWorldDepth(p: vec2u) -> f32 {
-    let depthValue = textureLoad(depth, p, 0);
+fn getWorldDepth(depthValue: f32, p: vec2u) -> f32 {
     let dim = vec2f(textureDimensions(depth).xy);
 
     let ndc = vec4f(
@@ -52,9 +51,14 @@ fn getWorldDepth(p: vec2u) -> f32 {
 
 @fragment
 fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
-    let base = textureLoad(color, vec2<u32>(fragCoord.xy), 0);
+    let p = vec2<u32>(fragCoord.xy);
+    let depthValue = textureLoad(depth, p, 0);
+    if depthValue == 1.0 {
+        discard;
+    }
+    let base = textureLoad(color, p, 0);
     let nor = normalize(textureLoad(normal, vec2<u32>(fragCoord.xy), 0).xyz * 2.0 - vec3f(1.0, 1.0, 1.0));
-    let d = getWorldDepth(vec2u(fragCoord.xy));
+    let d = getWorldDepth(depthValue, vec2u(fragCoord.xy));
     let o = textureLoad(ssao, vec2<u32>(fragCoord.xy), 0).x;
 
     let sunf = max(dot(nor, normalize(post.sunDir)), 0);

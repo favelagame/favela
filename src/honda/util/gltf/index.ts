@@ -41,14 +41,12 @@ export interface MeshDataV1 {
     uvBuffer: FavelaAccesor<Float32Array, "VEC2">;
 }
 
-export interface TexturedMeshDataV1 {
-    id: number;
-    name: string;
-    indexBuffer: FavelaAccesor<Uint16Array, "SCALAR">;
-    posBuffer: FavelaAccesor<Float32Array, "VEC3">;
-    normBuffer: FavelaAccesor<Float32Array, "VEC3">;
-    uvBuffer: FavelaAccesor<Float32Array, "VEC2">;
+export interface TexturedMeshDataV1 extends MeshDataV1 {
     baseTex: TextureV1;
+}
+
+export interface TexturedMeshDataV2 extends TexturedMeshDataV1 {
+    normalTex?: TextureV1;
 }
 
 export interface TextureV1 {
@@ -394,6 +392,67 @@ export class Gltf {
         };
     }
 
+    public getTexturedMeshV2(index: number): TexturedMeshDataV2 {
+        const name = this.json.meshes[index]?.name ?? "<unknown>";
+        const gPrimitive = this.getMeshPrimitive(index);
+
+        if (
+            !("POSITION" in gPrimitive.attributes) ||
+            !("NORMAL" in gPrimitive.attributes) ||
+            !("TEXCOORD_0" in gPrimitive.attributes)
+        ) {
+            throw new Error("Unsupported: missing attributes");
+        }
+
+        const indices = gPrimitive.indices;
+        if (indices === undefined) {
+            throw new Error("Unsupported: non-indexed geometry");
+        }
+
+        if (gPrimitive.mode !== undefined && gPrimitive.mode != 4) {
+            throw new Error("Unsupported: non-triagle-list geometry");
+        }
+
+        const indexBuffer = this.getAccessorAndAssertType(
+                indices,
+                "SCALAR",
+                Uint16Array
+            ),
+            posBuffer = this.getAccessorAndAssertType(
+                gPrimitive.attributes["POSITION"],
+                "VEC3",
+                Float32Array
+            ),
+            normBuffer = this.getAccessorAndAssertType(
+                gPrimitive.attributes["NORMAL"],
+                "VEC3",
+                Float32Array
+            ),
+            uvBuffer = this.getAccessorAndAssertType(
+                gPrimitive.attributes["TEXCOORD_0"],
+                "VEC2",
+                Float32Array
+            );
+
+        const materialIdx = gPrimitive.material;
+        if (materialIdx === undefined) {
+            throw new Error("Mesh does not have a material/texture");
+        }
+
+        const baseTex = this.getBaseColorTextureFromMaterial(materialIdx);
+        const normalTex = this.getNormalMapFromMaterial(materialIdx);
+        return {
+            id: getNewResourceId(),
+            name,
+            indexBuffer,
+            posBuffer,
+            normBuffer,
+            uvBuffer,
+            baseTex,
+            normalTex,
+        };
+    }
+
     public getBaseColorTextureFromMaterial(materialIdx: number): TextureV1 {
         const gMaterial = this.json.materials[materialIdx];
         if (!gMaterial) throw new Error("Material index OOB");
@@ -407,6 +466,25 @@ export class Gltf {
         }
 
         const textureInfo = gMaterial.pbrMetallicRoughness.baseColorTexture!;
+
+        if (textureInfo.texCoord !== 0 && textureInfo.texCoord !== undefined) {
+            throw new Error("Unsupported: Multiple UVs");
+        }
+
+        return this.getTexture(textureInfo.index);
+    }
+
+    public getNormalMapFromMaterial(
+        materialIdx: number
+    ): TextureV1 | undefined {
+        const gMaterial = this.json.materials[materialIdx];
+        if (!gMaterial) throw new Error("Material index OOB");
+
+        if (!gMaterial.normalTexture) {
+            return undefined;
+        }
+
+        const textureInfo = gMaterial.normalTexture!;
 
         if (textureInfo.texCoord !== 0 && textureInfo.texCoord !== undefined) {
             throw new Error("Unsupported: Multiple UVs");
