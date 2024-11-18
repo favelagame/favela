@@ -1,6 +1,7 @@
 
 struct PostCfg {
     inverseProjection: mat4x4f,
+    camera: mat4x4f,
     sunDir: vec3f,
 
     fogColor: vec3f,
@@ -12,8 +13,6 @@ struct PostCfg {
 
     ambientRatio: f32,
     occlusionPower: f32,
-
-    ssaoSamples: array<vec3f,64>,
 };
 
 const bigTri = array(
@@ -76,7 +75,11 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
 
         return vec4f(o, o, o, 1.0);
     } else {
-        // depth debug
-        return vec4f(d, d, d, 1);
+        let tm = transpose(mat3x3f(
+            post.camera[0].xyz,
+            post.camera[1].xyz,
+            post.camera[2].xyz,
+        ));
+        return vec4f(nor * tm, 1);
     }
 }

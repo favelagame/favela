@@ -106,7 +106,7 @@ export class SSAOPass {
             },
             generateNoise(4),
             {
-                bytesPerRow: 64,
+                bytesPerRow: 4 * 4 * 4,
                 rowsPerImage: 4,
             },
             [4, 4, 1]
@@ -123,13 +123,13 @@ export class SSAOPass {
             this.createBindGroup();
         }
 
-        const cameraSys = Game.ecs.getSystem(CameraSystem);
-        const camera = cameraSys.activeCamera
+        const csys = Game.ecs.getSystem(CameraSystem);
+        const camera = csys.activeCamera;
         this.settings.set({
             projection: camera.matrix,
             inverseProjection: camera.invMatrix,
             samples: this.ssaoSamples,
-            camera: cameraSys.activeCameraTransfrom.matrix,
+            camera: csys.activeCameraTransfrom.invMatrix,
 
             ...this.guiSettings,
         });

@@ -40,8 +40,8 @@ export class PostprocessPass {
         f.addColor(this.guiSettings, "fogColor");
 
         const b = p.addFolder("Shading");
-        b.add(this.guiSettings, 'ambientRatio', 0, 1);
-        b.add(this.guiSettings, 'occlusionPower', 0.5, 5);
+        b.add(this.guiSettings, "ambientRatio", 0, 1);
+        b.add(this.guiSettings, "occlusionPower", 0.5, 5);
 
         this.settingsGpuBuffer = Game.gpu.device.createBuffer({
             size: this.settings.arrayBuffer.byteLength,
@@ -94,13 +94,15 @@ export class PostprocessPass {
             this.createBindGroup();
         }
 
+        const csys = Game.ecs.getSystem(CameraSystem);
         this.settings.set({
             mode: mode(),
 
             sunDir: this.sunDir,
 
-            inverseProjection:
-                Game.ecs.getSystem(CameraSystem).activeCamera.invMatrix,
+            inverseProjection: csys.activeCamera.invMatrix,
+            camera: csys.activeCameraTransfrom.invMatrix,
+
             ...this.guiSettings,
         });
 

@@ -45,11 +45,11 @@ fn reconstructPosition(p: vec2u) -> vec3f {
 
 @fragment
 fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
-    let norMat = mat3x3f(
+    let norMat = transpose(mat3x3f(
         ssao.camera[0].xyz,
+        ssao.camera[1].xyz,
         ssao.camera[2].xyz,
-        ssao.camera[3].xyz,
-    );
+    ));
 
     let positionVec = reconstructPosition(vec2<u32>(fragCoord.xy));
     let normalVec = normalize((textureLoad(normal, vec2<u32>(fragCoord.xy), 0).xyz * 2.0 - vec3f(1.0, 1.0, 1.0)) * norMat);
