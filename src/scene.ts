@@ -21,7 +21,14 @@ import { Gltf } from "@/honda/util/gltf";
 import { GpuMeshV1 } from "@/honda/gpu/meshes/basic.mesh";
 import { GpuTexturedMeshV1 } from "@/honda/gpu/meshes/textured.mesh";
 
+// basic deadzone
+function dz(x: number) {
+    return Math.abs(x) < 0.1 ? 0 : x;
+}
+
 const sens = 0.005;
+const sensGamepad = 0.05;
+
 @EcsInjectable()
 class FlyCameraScript extends HondaBehavior {
     protected moveBaseVec = vec3.create(0, 0, 0);
@@ -37,28 +44,60 @@ class FlyCameraScript extends HondaBehavior {
     }
 
     onUpdate(): void {
-        this.pitch = clamp(
-            -PI_2,
-            this.pitch + Game.input.mouseDeltaY * -sens,
-            PI_2
-        );
-        this.yaw += Game.input.mouseDeltaX * -sens; // maybe modulo this one?
-        quat.fromEuler(this.pitch, this.yaw, 0, "yxz", this.transform.rotation);
+        let boost = false;
+        const g = Game.input.activeGamepad;
 
-        this.moveBaseVec[0] =
-            (Game.input.btnMap["KeyD"] ? 1 : 0) +
-            (Game.input.btnMap["KeyA"] ? -1 : 0);
-        this.moveBaseVec[1] = 0;
-        this.moveBaseVec[2] =
-            (Game.input.btnMap["KeyW"] ? -1 : 0) +
-            (Game.input.btnMap["KeyS"] ? 1 : 0);
+        if (g) {
+            boost = g.buttons[0].pressed;
+            this.moveBaseVec[0] = dz(g.axes[0]);
+            this.moveBaseVec[1] = 0;
+            this.moveBaseVec[2] = dz(g.axes[1]);
+
+            this.pitch = clamp(
+                -PI_2,
+                this.pitch + dz(g.axes[3]) * -sensGamepad,
+                PI_2
+            );
+            this.yaw += dz(g.axes[2]) * -sensGamepad; // maybe modulo this one?
+            quat.fromEuler(
+                this.pitch,
+                this.yaw,
+                0,
+                "yxz",
+                this.transform.rotation
+            );
+        } else {
+            boost = Game.input.btnMap["ShiftLeft"];
+            this.moveBaseVec[0] =
+                (Game.input.btnMap["KeyD"] ? 1 : 0) +
+                (Game.input.btnMap["KeyA"] ? -1 : 0);
+            this.moveBaseVec[1] = 0;
+            this.moveBaseVec[2] =
+                (Game.input.btnMap["KeyW"] ? -1 : 0) +
+                (Game.input.btnMap["KeyS"] ? 1 : 0);
+
+            this.pitch = clamp(
+                -PI_2,
+                this.pitch + Game.input.mouseDeltaY * -sens,
+                PI_2
+            );
+            this.yaw += Game.input.mouseDeltaX * -sens; // maybe modulo this one?
+            quat.fromEuler(
+                this.pitch,
+                this.yaw,
+                0,
+                "yxz",
+                this.transform.rotation
+            );
+        }
 
         if (this.moveBaseVec[0] != 0 || this.moveBaseVec[2] != 0) {
-            vec3.normalize(this.moveBaseVec, this.moveBaseVec);
+            if (vec3.length(this.moveBaseVec) > 1) {
+                vec3.normalize(this.moveBaseVec, this.moveBaseVec);
+            }
             vec3.mulScalar(
                 this.moveBaseVec,
-                (Game.deltaTime / 1000) *
-                    (Game.input.btnMap["ShiftLeft"] ? 5 : 1),
+                (Game.deltaTime / 1000) * (boost ? 5 : 1),
                 this.moveBaseVec
             );
 
