@@ -90,7 +90,7 @@ export class PostprocessPass {
     }
 
     apply() {
-        if (Game.gpu.wasResized) {
+        if (!this.bindGroup || Game.gpu.wasResized) {
             this.createBindGroup();
         }
 

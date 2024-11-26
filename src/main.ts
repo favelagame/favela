@@ -38,36 +38,36 @@ function frame(t: number) {
 
     // Render
     Game.cmdEncoder
-    .beginRenderPass({
-        label: "clear",
-        depthStencilAttachment: {
-            view: Game.gpu.depthTextureView,
-            depthLoadOp: "clear",
-            depthStoreOp: "store",
-            depthClearValue: 1,
-        },
-        colorAttachments: [
-            {
-                view: Game.gpu.colorTextureView,
-                loadOp: "clear",
-                storeOp: "store",
-                clearValue: [0.4, 0.7, 1, 1],
+        .beginRenderPass({
+            label: "clear",
+            depthStencilAttachment: {
+                view: Game.gpu.depthTextureView,
+                depthLoadOp: "clear",
+                depthStoreOp: "store",
+                depthClearValue: 1,
             },
-            {
-                view: Game.gpu.normalTextureView,
-                loadOp: "clear",
-                storeOp: "store",
-                clearValue: [0, 0, 0, 0],
-            },
-        ],
-    })
-    .end();
+            colorAttachments: [
+                {
+                    view: Game.gpu.colorTextureView,
+                    loadOp: "clear",
+                    storeOp: "store",
+                    clearValue: [0.4, 0.7, 1, 1],
+                },
+                {
+                    view: Game.gpu.normalTextureView,
+                    loadOp: "clear",
+                    storeOp: "store",
+                    clearValue: [0, 0, 0, 0],
+                },
+            ],
+        })
+        .end();
     ecs.getSystem(MeshRendererSystem).drawToGbuffer();
     ssao.apply();
     postprocess.apply();
 
     Game.input.endFrame();
-    Game.gpu.pushQueue();
+    Game.gpu.endFrame();
     Game.perf.stopFrame();
     Game.gpu.wasResized = false;
     requestAnimationFrame(frame);
