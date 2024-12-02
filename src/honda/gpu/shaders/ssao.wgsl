@@ -28,14 +28,13 @@ fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
     return vec4f(bigTri[index], 0, 1);
 }
 
-fn reconstructPosition(p: vec2u) -> vec3f {
-    let depthValue = textureLoad(depth, p, 0);
+fn reconstructPosition(p: vec2u, dv: f32) -> vec3f {
     let dim = vec2f(textureDimensions(depth).xy);
 
     let ndc = vec4f(
         (f32(p.x) / dim.x) * 2.0 - 1.0,
         1.0 - (f32(p.y) / dim.y) * 2.0,
-        depthValue,
+        dv,
         1.0
     );
 
@@ -45,15 +44,21 @@ fn reconstructPosition(p: vec2u) -> vec3f {
 
 @fragment
 fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
+    let p = vec2u(fragCoord.xy);
     let norMat = transpose(mat3x3f(
         ssao.camera[0].xyz,
         ssao.camera[1].xyz,
         ssao.camera[2].xyz,
     ));
 
-    let positionVec = reconstructPosition(vec2<u32>(fragCoord.xy));
-    let normalVec = normalize((textureLoad(normal, vec2<u32>(fragCoord.xy), 0).xyz * 2.0 - vec3f(1.0, 1.0, 1.0)) * norMat);
-    let randomVec = textureLoad(noise, vec2<u32>(u32(fragCoord.x) & 0x3, u32(fragCoord.y) & 0x3), 0).xyz;
+    let d = textureLoad(depth, p, 0);
+    if d == 1.0 {
+        return vec4f(1.0, 0.0, 0.0, 0.0); // early return on sky
+    }
+
+    let positionVec = reconstructPosition(p, d);
+    let normalVec = normalize((textureLoad(normal, p, 0).xyz * 2.0 - vec3f(1.0, 1.0, 1.0)) * norMat);
+    let randomVec = textureLoad(noise, vec2<u32>(p.x & 0x3, p.y & 0x3), 0).xyz;
 
     let tangent = normalize(randomVec - normalVec * dot(randomVec, normalVec));
     let bitangent = cross(normalVec, tangent);
@@ -69,7 +74,8 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
 
         let offset_ = ssao.projection * vec4f(samplePos, 1.0);
         let offset = (offset_.xyz / offset_.w) * 0.5 + 0.5;
-        let sampleDepth = reconstructPosition(vec2u(u32(offset.x * dim.x), u32((1.0 - offset.y) * dim.y))).z;
+        let p = vec2u(u32(offset.x * dim.x), u32((1.0 - offset.y) * dim.y));
+        let sampleDepth = reconstructPosition(p, textureLoad(depth, p, 0)).z;
         let rangeCheck = smoothstep(0.0, 1.0, ssao.radius / abs(positionVec.z - sampleDepth));
         if sampleDepth >= samplePos.z + ssao.bias {
             occlusion += 1.0 * rangeCheck;

@@ -69,11 +69,11 @@ export class SSAOPass {
                 },
                 {
                     binding: 2,
-                    resource: Game.gpu.normalTextureView,
+                    resource: Game.gpu.textures.normal.view,
                 },
                 {
                     binding: 3,
-                    resource: Game.gpu.depthTextureView,
+                    resource: Game.gpu.textures.depth.view,
                 },
                 {
                     binding: 4,
@@ -138,7 +138,7 @@ export class SSAOPass {
             label: "ssao",
             colorAttachments: [
                 {
-                    view: Game.gpu.ssaoTextureView,
+                    view: Game.gpu.textures.ssao.view,
                     loadOp: "clear",
                     storeOp: "store",
                     clearValue: [0, 0, 0, 0],

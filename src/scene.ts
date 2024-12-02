@@ -20,6 +20,7 @@ import { setStatus } from "@/honda/util/status";
 import { Gltf } from "@/honda/util/gltf";
 import { GpuMeshV1 } from "@/honda/gpu/meshes/basic.mesh";
 import { GpuTexturedMeshV1 } from "@/honda/gpu/meshes/textured.mesh";
+import { createTextureFromImages } from "webgpu-utils";
 
 // basic deadzone
 function dz(x: number) {
@@ -121,14 +122,18 @@ class FlyCameraScript extends HondaBehavior {
 export async function setupScene(ecs: ECS) {
     setStatus("loading assets");
 
-    const m1 = await Gltf.fromUrl("m1.glb");
-    const gm = new GpuMeshV1(m1.getMeshDataV1(0));
-    gm.upload(); // Let's leak a few KiB's of GPU memory
-
-    const m2 = await Gltf.fromUrl("m2.glb");
-    await m2.prepareImages();
-    const gm2 = new GpuTexturedMeshV1(m2.getTexturedMeshV1(0));
-    gm2.upload(); // Let's leak more GPU memory
+    const skyTex = await createTextureFromImages(
+        Game.gpu.device,
+        [
+            "sky/px.avif",
+            "sky/nx.avif",
+            "sky/pyh.avif",
+            "sky/ny.avif",
+            "sky/pz.avif",
+            "sky/nz.avif",
+        ],
+        { mips: true }
+    );
 
     const sponza = await Gltf.fromUrl("sponza.glb");
     await sponza.prepareImages();
@@ -174,4 +179,8 @@ export async function setupScene(ecs: ECS) {
     }
 
     Object.values(meshCache).forEach((x) => x?.upload());
+
+    return {
+        skyTex,
+    };
 }

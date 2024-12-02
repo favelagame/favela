@@ -36,6 +36,19 @@ export const VERTEX_POS_NORM_UV = [
     },
 ] satisfies GPUVertexBufferLayout[];
 
+export const VERTEX_POS = [
+    {
+        arrayStride: 12,
+        attributes: [
+            {
+                offset: 0,
+                format: "float32x3",
+                shaderLocation: 0,
+            },
+        ],
+    }
+] satisfies GPUVertexBufferLayout[];
+
 export const DEPTHTEST_LESS_WRITE = {
     depthWriteEnabled: true,
     depthCompare: "less",

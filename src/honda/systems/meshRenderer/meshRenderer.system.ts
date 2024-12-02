@@ -102,11 +102,11 @@ export class MeshRendererSystem extends System {
         (cr.RENDER_PASS_DESCRIPTOR as GPURenderPassDescriptor).timestampWrites =
             Game.gpu.timestamp("MeshRenderer");
         cr.RENDER_PASS_DESCRIPTOR.colorAttachments[0].view =
-            Game.gpu.colorTextureView;
+            Game.gpu.textures.base.view;
         cr.RENDER_PASS_DESCRIPTOR.colorAttachments[1].view =
-            Game.gpu.normalTextureView;
+            Game.gpu.textures.normal.view;
         cr.RENDER_PASS_DESCRIPTOR.depthStencilAttachment.view =
-            Game.gpu.depthTextureView;
+            Game.gpu.textures.depth.view;
         const pass = Game.cmdEncoder.beginRenderPass(cr.RENDER_PASS_DESCRIPTOR);
         pass.setBindGroup(0, this.gUniformBindGroup);
         pass.setBindGroup(1, this.instanceBindGroup);

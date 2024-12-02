@@ -9,6 +9,8 @@ import { setError, setStatus } from "./honda/util/status";
 import { PostprocessPass } from "./honda/gpu/passes/post.pass";
 import { MeshRendererSystem } from "./honda/systems/meshRenderer";
 import { SSAOPass } from "./honda/gpu/passes/ssao.pass";
+import { ShadePass } from "./honda/gpu/passes/shade.pass";
+import { SkyPass } from "./honda/gpu/passes/sky";
 
 const canvas = document.querySelector("canvas")!;
 try {
@@ -22,8 +24,11 @@ Game.input = new Input(canvas);
 const ecs = new ECS();
 Game.ecs = ecs;
 const ssao = new SSAOPass();
+const shade = new ShadePass();
 const postprocess = new PostprocessPass();
-await setupScene(ecs);
+const extras = await setupScene(ecs);
+const skybox = new SkyPass(extras.skyTex);
+
 setStatus(undefined);
 Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
 
@@ -41,29 +46,18 @@ function frame(t: number) {
         .beginRenderPass({
             label: "clear",
             depthStencilAttachment: {
-                view: Game.gpu.depthTextureView,
+                view: Game.gpu.textures.depth.view,
                 depthLoadOp: "clear",
                 depthStoreOp: "store",
                 depthClearValue: 1,
             },
-            colorAttachments: [
-                {
-                    view: Game.gpu.colorTextureView,
-                    loadOp: "clear",
-                    storeOp: "store",
-                    clearValue: [0.4, 0.7, 1, 1],
-                },
-                {
-                    view: Game.gpu.normalTextureView,
-                    loadOp: "clear",
-                    storeOp: "store",
-                    clearValue: [0, 0, 0, 0],
-                },
-            ],
+            colorAttachments: [],
         })
         .end();
     ecs.getSystem(MeshRendererSystem).drawToGbuffer();
+    skybox.apply();
     ssao.apply();
+    shade.apply();
     postprocess.apply();
 
     Game.input.endFrame();

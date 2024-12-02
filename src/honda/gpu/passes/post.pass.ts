@@ -27,21 +27,18 @@ export class PostprocessPass {
         fogDensity: 0.01,
         fogColor: [0.6, 0.6, 0.6],
 
-        ambientRatio: 0.3,
         occlusionPower: 1,
+        exposure: 1,
     };
 
     constructor() {
         const p = Game.gui.addFolder("Postprocess");
-        const f = p.addFolder("Fog");
-        f.add(this.guiSettings, "fogStart", 0, 100);
-        f.add(this.guiSettings, "fogEnd", 0, 100);
-        f.add(this.guiSettings, "fogDensity", 0, 5);
-        f.addColor(this.guiSettings, "fogColor");
-
-        const b = p.addFolder("Shading");
-        b.add(this.guiSettings, "ambientRatio", 0, 1);
-        b.add(this.guiSettings, "occlusionPower", 0.5, 5);
+        p.add(this.guiSettings, "fogStart", 0, 100);
+        p.add(this.guiSettings, "fogEnd", 0, 100);
+        p.add(this.guiSettings, "fogDensity", 0, 5);
+        p.addColor(this.guiSettings, "fogColor");
+        p.add(this.guiSettings, "occlusionPower", 0, 5);
+        p.add(this.guiSettings, "exposure", 0, 5);
 
         this.settingsGpuBuffer = Game.gpu.device.createBuffer({
             size: this.settings.arrayBuffer.byteLength,
@@ -62,28 +59,15 @@ export class PostprocessPass {
                 },
                 {
                     binding: 1,
-                    resource: Game.gpu.colorTextureView,
+                    resource: Game.gpu.textures.shaded.view,
                 },
                 {
                     binding: 2,
-                    resource: Game.gpu.normalTextureView,
+                    resource: Game.gpu.textures.depth.view,
                 },
                 {
                     binding: 3,
-                    resource: Game.gpu.depthTextureView,
-                },
-                {
-                    binding: 4,
-                    resource: Game.gpu.getSampler({
-                        addressModeU: "clamp-to-edge",
-                        addressModeV: "clamp-to-edge",
-                        magFilter: "linear",
-                        minFilter: "linear",
-                    }),
-                },
-                {
-                    binding: 5,
-                    resource: Game.gpu.ssaoTextureView,
+                    resource: Game.gpu.textures.ssao.view,
                 },
             ],
         });
@@ -110,7 +94,7 @@ export class PostprocessPass {
             label: "post",
             colorAttachments: [
                 {
-                    view: Game.gpu.canvasTextureView,
+                    view: Game.gpu.canvasView,
                     loadOp: "clear",
                     storeOp: "store",
                     clearValue: [1, 0, 1, 1],

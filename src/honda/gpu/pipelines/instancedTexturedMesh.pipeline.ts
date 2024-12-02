@@ -24,7 +24,7 @@ export function createTexturedMeshInstanced(g: WebGpu) {
         },
         fragment: {
             module,
-            targets: [{ format: "rgba8unorm" }, { format: "rgba8unorm" }],
+            targets: [{ format: "rgba8unorm-srgb" }, { format: "rgba8unorm" }],
         },
         depthStencil: DEPTHTEST_LESS_WRITE,
     });

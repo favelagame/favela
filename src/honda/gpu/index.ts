@@ -3,27 +3,28 @@ import { nn } from "../util";
 import { createBindGroupLayouts } from "./bindGroupLayouts";
 import { createTexturedMeshInstanced } from "./pipelines/instancedTexturedMesh.pipeline";
 import { createPostProcess } from "./pipelines/postprocess.pipeline";
+import { createShade } from "./pipelines/shade.pipeline";
+import { createSky } from "./pipelines/sky.pipeline";
 import { createSSAO } from "./pipelines/ssao.pipeline";
 import { createModules } from "./shaders";
+import { HondaTexture } from "./tex";
 
 const TIMESTAMP_PASS_CAPACITY = 16;
 
 export class WebGpu {
     private ro: ResizeObserver;
 
-    public postTexture!: GPUTexture;
-    public ssaoTexture!: GPUTexture;
-    public depthTexture!: GPUTexture;
-    public colorTexture!: GPUTexture;
-    public canvasTexture!: GPUTexture;
-    public normalTexture!: GPUTexture;
+    public textures = {
+        base: new HondaTexture("rgba8unorm-srgb", 1, "g-base"),
+        normal: new HondaTexture("rgba8unorm", 1, "g-normal"),
+        mtlRghEms: new HondaTexture("rgba8unorm", 1, "g-metal-rough-emission"),
+        depth: new HondaTexture("depth24plus", 1, "g-depth"),
+        ssao: new HondaTexture("r8unorm", 1, "ssao"),
+        shaded: new HondaTexture("rgba16float", 1, "shaded"),
+    };
 
-    public postTextureView!: GPUTexture;
-    public ssaoTextureView!: GPUTextureView;
-    public depthTextureView!: GPUTextureView;
-    public colorTextureView!: GPUTextureView;
-    public canvasTextureView!: GPUTextureView;
-    public normalTextureView!: GPUTextureView;
+    public canvasTexture!: GPUTexture;
+    public canvasView!: GPUTextureView;
 
     public pFormat = navigator.gpu.getPreferredCanvasFormat();
     public shaderModules = createModules(this);
@@ -32,6 +33,8 @@ export class WebGpu {
         instancedTextured: createTexturedMeshInstanced(this),
         post: createPostProcess(this),
         ssao: createSSAO(this),
+        shade: createShade(this),
+        sky: createSky(this),
     };
 
     public wasResized = false;
@@ -89,7 +92,7 @@ export class WebGpu {
         console.info(device.limits);
         console.groupEnd();
 
-        this.createTexturesAndViews();
+        this.resizeTextures();
         this.ro = new ResizeObserver((e) => this.handleResize(e));
 
         this.querySet = device.createQuerySet({
@@ -117,43 +120,10 @@ export class WebGpu {
         return this.canvas.width / this.canvas.height;
     }
 
-    protected createTexturesAndViews() {
-        const size = [this.canvas.width, this.canvas.height, 1];
-        const usage =
-            GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING;
-
-        this.ssaoTexture?.destroy();
-        this.depthTexture?.destroy();
-        this.colorTexture?.destroy();
-        this.normalTexture?.destroy();
-
-        this.ssaoTexture = this.device.createTexture({
-            format: "r8unorm",
-            size,
-            usage,
-        });
-        this.colorTexture = this.device.createTexture({
-            format: "rgba8unorm",
-            size,
-            usage,
-        });
-        this.depthTexture = this.device.createTexture({
-            size,
-            format: "depth24plus",
-            usage,
-        });
-        this.normalTexture = this.device.createTexture({
-            format: "rgba8unorm",
-            size,
-            usage,
-        });
-        this.canvasTexture = this.ctx.getCurrentTexture();
-
-        this.ssaoTextureView = this.ssaoTexture.createView();
-        this.depthTextureView = this.depthTexture.createView();
-        this.colorTextureView = this.colorTexture.createView();
-        this.normalTextureView = this.normalTexture.createView();
-        this.canvasTextureView = this.canvasTexture.createView();
+    protected resizeTextures() {
+        Object.values(this.textures).forEach((t) =>
+            t.resize(this.device, this.canvas.width, this.canvas.height)
+        );
     }
 
     private handleResize([e]: ResizeObserverEntry[]) {
@@ -168,7 +138,7 @@ export class WebGpu {
                     this.renderScale
             ) & ~1;
 
-        this.createTexturesAndViews();
+        this.resizeTextures();
         this.wasResized = true;
     }
 
@@ -176,7 +146,7 @@ export class WebGpu {
         // Chrome seems to pass a "new?" frame every time, firefox reuses the same one
         if (this.canvasTexture != this.ctx.getCurrentTexture()) {
             this.canvasTexture = this.ctx.getCurrentTexture();
-            this.canvasTextureView = this.canvasTexture.createView();
+            this.canvasView = this.canvasTexture.createView();
         }
 
         this.queryIndex = 0;
