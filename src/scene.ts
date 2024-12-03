@@ -21,6 +21,7 @@ import { Gltf } from "@/honda/util/gltf";
 import { GpuMeshV1 } from "@/honda/gpu/meshes/basic.mesh";
 import { GpuTexturedMeshV1 } from "@/honda/gpu/meshes/textured.mesh";
 import { createTextureFromImages } from "webgpu-utils";
+import { Material } from "./honda/gpu/material/material";
 
 // basic deadzone
 function dz(x: number) {
@@ -181,6 +182,7 @@ export async function setupScene(ecs: ECS) {
     Object.values(meshCache).forEach((x) => x?.upload());
 
     return {
+        material: Material.withoutTextures([1, 0, 0]),
         skyTex,
     };
 }

@@ -54,6 +54,8 @@ export interface TextureV1 {
     image: ImageBitmap;
 }
 
+// TODO(mbabnik) texture,material cache, (maybe also move mesh cache inside here)
+
 export class Gltf {
     private static readonly MAGIC = 0x46546c67;
     private static readonly CHUNKYTPE_JSON = 0x4e4f534a;

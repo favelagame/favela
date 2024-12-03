@@ -52,6 +52,8 @@ export class SSAOPass {
         bias: 0.025,
     };
 
+    protected disable = false;
+
     protected createBindGroup() {
         this.bindGroup = Game.gpu.device.createBindGroup({
             label: "ssaobg",
@@ -94,6 +96,7 @@ export class SSAOPass {
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM,
         });
         this.noiseTexture = Game.gpu.device.createTexture({
+            label: "SSAO noise",
             format: "rgba32float",
             size: [4, 4, 1],
             usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING,
@@ -116,6 +119,8 @@ export class SSAOPass {
         p.add(this.guiSettings, "kernelSize", 1, 64);
         p.add(this.guiSettings, "radius", 0, 1);
         p.add(this.guiSettings, "bias", 0.0001, 0.1);
+
+        this.disable = window.location.hash.includes("noSSAO");
     }
 
     apply() {
@@ -141,7 +146,7 @@ export class SSAOPass {
                     view: Game.gpu.textures.ssao.view,
                     loadOp: "clear",
                     storeOp: "store",
-                    clearValue: [0, 0, 0, 0],
+                    clearValue: [1, 0, 0, 0],
                 },
             ],
             timestampWrites: Game.gpu.timestamp("ssao"),
@@ -154,7 +159,7 @@ export class SSAOPass {
             this.settings.arrayBuffer
         );
         post.setBindGroup(0, this.bindGroup);
-        post.draw(3);
+        if (!this.disable) post.draw(3);
         post.end();
     }
 }

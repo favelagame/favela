@@ -1,5 +1,43 @@
 import { WebGpu } from ".";
 
+const MATERIAL_BASE = [
+    {
+        binding: 0, // material settings
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: { type: "uniform" },
+    },
+    {
+        binding: 1, // base tex
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {},
+    },
+    {
+        binding: 2, // base sampler
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {},
+    },
+    {
+        binding: 3, // mtlRgh tex
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {},
+    },
+    {
+        binding: 4, // mtlRgh sampler
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {},
+    },
+    {
+        binding: 5, // emission tex
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {},
+    },
+    {
+        binding: 6, // emission sampler
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {},
+    },
+] satisfies GPUBindGroupLayoutEntry[];
+
 export function createBindGroupLayouts(g: WebGpu) {
     return {
         favelaUniforms: g.device.createBindGroupLayout({
@@ -133,6 +171,26 @@ export function createBindGroupLayouts(g: WebGpu) {
                 },
                 {
                     binding: 5,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    sampler: {},
+                },
+            ],
+        }),
+        material: g.device.createBindGroupLayout({
+            label: "materialNoNormalBGL",
+            entries: MATERIAL_BASE,
+        }),
+        materialNormal: g.device.createBindGroupLayout({
+            label: "materialNormalBGL",
+            entries: [
+                ...MATERIAL_BASE,
+                {
+                    binding: 7, // normal tex
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: {},
+                },
+                {
+                    binding: 8, // normal sampler
                     visibility: GPUShaderStage.FRAGMENT,
                     sampler: {},
                 },
