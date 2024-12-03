@@ -1,7 +1,7 @@
 export type TTopologyType = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface IMeshPrimitive {
-    attributes: Record<string, number>;
+    attributes: Record<string, number | undefined>;
     indices?: number;
     material?: number;
     mode?: TTopologyType;
@@ -65,7 +65,7 @@ interface IMaterialOcclusionTextureInfo {
     strength?: number;
 }
 
-type TAlphaMode = "OPAQUE" | "MASK" | "BLEND";
+export type TAlphaMode = "OPAQUE" | "MASK" | "BLEND";
 
 interface IMaterial {
     name?: string;
@@ -102,12 +102,13 @@ interface ISampler {
 
 interface ITexture {
     extensions: {
-        EXT_texture_webp: {
+        EXT_texture_webp?: {
             source: number;
         };
     };
-
+    source?: number;
     sampler: number;
+    name?: string;
 }
 
 interface INodeBase {

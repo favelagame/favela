@@ -20,15 +20,19 @@ export interface MetalicRoughness extends Texture {
     roughFactor: number;
 }
 
+export interface NormalOpt extends Texture {
+    scale?: number;
+}
+
 export interface Normal extends Texture {
     scale: number;
 }
 
-export interface Emission extends Base {
+export interface Emission extends Texture {
     factor: Vec3;
 }
 
 export interface Alpha {
     mode: AlphaMode;
-    alphaCutoff?: number;
+    alphaCutoff: number;
 }

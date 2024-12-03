@@ -48,32 +48,12 @@ export class Material {
         emission: [number, number, number] = [0, 0, 0],
         label?: string
     ) {
-        const sampler = Game.gpu.getSampler({
-            magFilter: "linear",
-            minFilter: "linear",
-            addressModeU: "clamp-to-edge",
-            addressModeV: "clamp-to-edge",
-        });
-        const texture = this.getDefaultTexture(); // a single white pixel
         return new Material(
-            {
-                factor: vec4.create(color[0], color[1], color[2], 1),
-                sampler,
-                texture,
-            },
-            {
-                metalFactor: metal,
-                roughFactor: rough,
-                sampler,
-                texture,
-            },
+            { factor: vec4.create(color[0], color[1], color[2], 1) },
+            { metalFactor: metal, roughFactor: rough },
             undefined,
-            {
-                factor: vec3.create(...emission),
-                sampler,
-                texture,
-            },
-            undefined,
+            { factor: vec3.create(...emission) },
+            {},
             label
         );
     }
@@ -84,37 +64,63 @@ export class Material {
     protected materialData!: GPUBuffer;
     protected emission: Mat.Emission;
     protected alpha: Mat.Alpha;
+    protected base: Mat.Base;
+    protected normal?: Mat.Normal;
+    protected metalRough: Mat.MetalicRoughness;
 
     public constructor(
-        protected base: Mat.Base,
-        protected metalRough: Mat.MetalicRoughness,
-        protected normal?: Mat.Normal,
-        emission?: Mat.Emission,
-        alpha?: Mat.Alpha,
+        base: Partial<Mat.Base>,
+        metalRough: Partial<Mat.MetalicRoughness>,
+        normal: Mat.NormalOpt | undefined,
+        emission: Partial<Mat.Emission>,
+        alpha: Partial<Mat.Alpha>,
         public readonly label?: string
     ) {
-        if (!emission) {
-            const sampler = Game.gpu.getSampler({
-                magFilter: "linear",
-                minFilter: "linear",
-                addressModeU: "clamp-to-edge",
-                addressModeV: "clamp-to-edge",
-            });
-            const texture = Material.getDefaultTexture(); // a single white pixel
-            this.emission = {
-                texture,
-                sampler,
-                factor: vec3.create(0, 0, 0),
-            };
-        } else {
-            this.emission = emission;
-        }
+        const sampler = Game.gpu.getSampler({
+            magFilter: "linear",
+            minFilter: "linear",
+            addressModeU: "clamp-to-edge",
+            addressModeV: "clamp-to-edge",
+        });
+        const texture = Material.getDefaultTexture(); // a single white pixel
 
-        this.alpha = alpha ?? { mode: Mat.AlphaMode.OPAQUE };
+        this.base = {
+            factor: base.factor ?? vec4.create(1, 1, 1, 1),
+            sampler: base.sampler ?? sampler,
+            texture: base.texture ?? texture,
+        };
+
+        this.metalRough = {
+            metalFactor: metalRough.metalFactor ?? 1,
+            roughFactor: metalRough.roughFactor ?? 1,
+            sampler: metalRough.sampler ?? sampler,
+            texture: metalRough.texture ?? texture,
+        };
+
+        this.emission = {
+            factor: emission.factor ?? vec3.create(1, 1, 1, 1),
+            sampler: emission.sampler ?? sampler,
+            texture: emission.texture ?? texture,
+        };
+
+        this.alpha = {
+            mode: alpha.alphaCutoff ?? Mat.AlphaMode.OPAQUE,
+            alphaCutoff: alpha.alphaCutoff ?? 0.5,
+        };
 
         this.type =
             (normal != undefined ? NORMALMAP_BIT : 0) |
             (this.alpha.mode == Mat.AlphaMode.BLEND ? TRANSPARENCY_BIT : 0);
+
+        if (normal) {
+            this.normal = {
+                sampler: normal.sampler ?? sampler,
+                texture: normal.texture,
+                scale: normal.scale ?? 1,
+            };
+        }
+
+        this.createGpuResources();
     }
 
     protected createGpuResources(): void {

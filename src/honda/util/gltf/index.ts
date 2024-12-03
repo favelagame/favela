@@ -1,6 +1,12 @@
-import { nn } from "..";
+import { Mesh } from "@/honda/gpu/meshes/mesh";
+import { nMips, nn } from "..";
 import { getNewResourceId } from "../resource";
 import type * as TG from "./gltf.types";
+import { Material } from "@/honda/gpu/material/material";
+import { Game } from "@/honda/state";
+import { generateMipmap } from "webgpu-utils";
+import { vec3, vec4 } from "wgpu-matrix";
+import { AlphaMode } from "@/honda/gpu/material/material.types";
 
 export type TTypedArrayCtor<T> = {
     new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
@@ -54,14 +60,15 @@ export interface TextureV1 {
     image: ImageBitmap;
 }
 
-// TODO(mbabnik) texture,material cache, (maybe also move mesh cache inside here)
-
 export class Gltf {
     private static readonly MAGIC = 0x46546c67;
     private static readonly CHUNKYTPE_JSON = 0x4e4f534a;
     private static readonly CHUNKTYPE_BIN = 0x004e4942;
 
-    public static readonly supportedExtensions: string[] = ["EXT_texture_webp"];
+    public static readonly supportedExtensions: string[] = [
+        "EXT_texture_webp",
+        "EXT_texture_avif", // i think?
+    ];
 
     static readonly COMP_TYPE_TO_CTOR: Record<
         TG.TComponentType,
@@ -79,6 +86,12 @@ export class Gltf {
         33071: "clamp-to-edge",
         33648: "mirror-repeat",
         10497: "repeat",
+    };
+
+    static readonly ALPHA_MODE_MAP: Record<TG.TAlphaMode, AlphaMode> = {
+        BLEND: AlphaMode.BLEND,
+        MASK: AlphaMode.MASK,
+        OPAQUE: AlphaMode.OPAQUE,
     };
 
     static getWebGpuSamplerFilter(
@@ -104,14 +117,40 @@ export class Gltf {
         const f = await fetch(url);
         const buf = await f.arrayBuffer();
 
-        return new Gltf(buf, url);
+        const gltf = new Gltf(buf, url);
+        await gltf.prepareImages();
+
+        return gltf;
     }
 
     public json: TG.IRoot;
+
+    protected gpuBufferCache = new Map<number, WeakRef<GPUBuffer>>();
+    protected meshCache = new Map<number, WeakRef<Mesh>>();
+    protected textureCache = new Map<number, WeakRef<GPUTexture>>();
+    protected materialCache = new Map<number, WeakRef<Material>>();
+
+    protected static cacheOr<T extends WeakKey>(
+        cache: Map<number, WeakRef<T>>,
+        key: number,
+        fn: () => T
+    ): T {
+        const value = cache.get(key)?.deref();
+
+        if (!value) {
+            const v = fn();
+            const nWeak = new WeakRef(v);
+            cache.set(key, nWeak);
+            return v;
+        }
+
+        return value;
+    }
+
     private bin: ArrayBufferView;
     private imageCache: ImageBitmap[] = [];
 
-    constructor(buf: ArrayBuffer, protected name = "<unknown glTF>") {
+    protected constructor(buf: ArrayBuffer, protected name = "<unknown glTF>") {
         const bufU32 = new Uint32Array(buf);
 
         const [magic, version] = bufU32;
@@ -146,10 +185,7 @@ export class Gltf {
         this.checkExt();
     }
 
-    /**
-     Call this if you need to load textures.
-     */
-    public async prepareImages(): Promise<void> {
+    protected async prepareImages(): Promise<void> {
         this.imageCache = await Promise.all(
             this.json.images.map((imgDef) => {
                 const ibv = this.getBufferView(imgDef.bufferView);
@@ -189,7 +225,7 @@ export class Gltf {
         }
     }
 
-    public getBuffer(index: number) {
+    protected getBuffer(index: number) {
         if (index !== 0) {
             throw new Error(
                 `Multiple buffers not supported (requested buffer ${index})!`
@@ -206,7 +242,7 @@ export class Gltf {
         return this.bin.buffer;
     }
 
-    public getBufferView(index: number): FavelaBufferView {
+    protected getBufferView(index: number): FavelaBufferView {
         const gBufferView = nn(this.json.bufferViews[index], "bufferView OOB");
 
         return {
@@ -217,7 +253,7 @@ export class Gltf {
         };
     }
 
-    public getAccessor(index: number): FavelaAccesor {
+    protected getAccessor(index: number): FavelaAccesor {
         const gAccessor = nn(this.json.accessors[index], "accessor OOB");
         if (
             gAccessor.normalized ||
@@ -245,7 +281,7 @@ export class Gltf {
         };
     }
 
-    public getAccessorAndAssertType<
+    protected getAccessorAndAssertType<
         Taccessor extends TG.TAccessorType,
         Tbuffer extends TypedArrays
     >(
@@ -269,6 +305,39 @@ export class Gltf {
         return accessor as unknown as FavelaAccesor<Tbuffer, Taccessor>;
     }
 
+    protected uploadAccesorToGpuWithAssertType<
+        Taccessor extends TG.TAccessorType,
+        Tbuffer extends TypedArrays
+    >(
+        index: number,
+        expectedType: Taccessor,
+        expectedBufferType: TTypedArrayCtor<Tbuffer>,
+        usage: GPUBufferUsageFlags,
+        label?: string
+    ) {
+        const accessor = this.getAccessorAndAssertType(
+            index,
+            expectedType,
+            expectedBufferType
+        );
+
+        const b = Game.gpu.device.createBuffer({
+            label,
+            size: (accessor.accessor.byteLength + 3) & ~3, // make size a multiple of 4
+            usage: usage | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true,
+        });
+
+        //@ts-expect-error "God, I wish there was an easier way to do this"
+        const dst = new accessor.accessor.constructor(
+            b.getMappedRange()
+        ) as TypedArrays;
+        dst.set(accessor.accessor);
+        b.unmap();
+
+        return b;
+    }
+
     protected getMeshPrimitive(index: number) {
         const gMesh = nn(this.json.meshes[index], "mesh OOB");
 
@@ -281,6 +350,72 @@ export class Gltf {
         }
 
         return nn(gMesh.primitives[0], `Mesh ${index} has no primitives`);
+    }
+
+    protected getTextureImage(texId: number) {
+        const gTexture = this.json.textures[texId];
+        if (!gTexture) throw new Error("Texture index OOB");
+
+        const source =
+            gTexture?.extensions?.EXT_texture_webp?.source ?? gTexture.source;
+
+        if (source === undefined) {
+            throw new Error("No supported textures found.");
+        }
+
+        return this.getImage(source!);
+    }
+
+    protected getTextureSamplerDescriptor(texId: number) {
+        const gTexture = this.json.textures[texId];
+        if (!gTexture) throw new Error("Texture index OOB");
+
+        if (gTexture?.extensions?.EXT_texture_webp?.source === undefined) {
+            throw new Error("No supported textures found.");
+        }
+        return this.getWebgpuSamplerDescriptor(gTexture.sampler);
+    }
+
+    /**
+     * @deprecated
+     */
+    protected getTextureData(texId: number) {
+        const gTexture = this.json.textures[texId];
+        if (!gTexture) throw new Error("Texture index OOB");
+
+        if (gTexture?.extensions?.EXT_texture_webp?.source === undefined) {
+            throw new Error("No supported textures found.");
+        }
+
+        return {
+            samplerDescriptor: this.getWebgpuSamplerDescriptor(
+                gTexture.sampler
+            ),
+            image: this.getImage(gTexture.extensions.EXT_texture_webp.source!),
+        };
+    }
+
+    protected getWebgpuSamplerDescriptor(
+        samplerIdx: number
+    ): GPUSamplerDescriptor {
+        const gSampler = this.json.samplers[samplerIdx];
+        if (!gSampler) {
+            throw new Error("Sampler idx OOB");
+        }
+
+        return {
+            addressModeU: Gltf.SAMPLER_TO_WGPU[gSampler.wrapS ?? 10497],
+            addressModeV: Gltf.SAMPLER_TO_WGPU[gSampler.wrapT ?? 10497],
+            minFilter: Gltf.getWebGpuSamplerFilter(gSampler.minFilter ?? 9728),
+            magFilter: Gltf.getWebGpuSamplerFilter(gSampler.magFilter ?? 9728),
+        };
+    }
+
+    protected getImage(imageIdx: number) {
+        return nn(
+            this.imageCache[imageIdx],
+            "image OOB,  did you forget to call prepareImages()"
+        );
     }
 
     public getMeshDataV1(index: number): MeshDataV1 {
@@ -310,17 +445,17 @@ export class Gltf {
                 Uint16Array
             ),
             posBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["POSITION"],
+                gPrimitive.attributes["POSITION"]!,
                 "VEC3",
                 Float32Array
             ),
             normBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["NORMAL"],
+                gPrimitive.attributes["NORMAL"]!,
                 "VEC3",
                 Float32Array
             ),
             uvBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["TEXCOORD_0"],
+                gPrimitive.attributes["TEXCOORD_0"]!,
                 "VEC2",
                 Float32Array
             );
@@ -335,6 +470,9 @@ export class Gltf {
         };
     }
 
+    /**
+     * @deprecated switch to getMesh + getMaterial
+     */
     public getTexturedMeshV1(index: number): TexturedMeshDataV1 {
         const name = this.json.meshes[index]?.name ?? "<unknown>";
         const gPrimitive = this.getMeshPrimitive(index);
@@ -362,17 +500,17 @@ export class Gltf {
                 Uint16Array
             ),
             posBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["POSITION"],
+                gPrimitive.attributes["POSITION"]!,
                 "VEC3",
                 Float32Array
             ),
             normBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["NORMAL"],
+                gPrimitive.attributes["NORMAL"]!,
                 "VEC3",
                 Float32Array
             ),
             uvBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["TEXCOORD_0"],
+                gPrimitive.attributes["TEXCOORD_0"]!,
                 "VEC2",
                 Float32Array
             );
@@ -394,6 +532,9 @@ export class Gltf {
         };
     }
 
+    /**
+     * @deprecated switch to getMesh + getMaterial
+     */
     public getTexturedMeshV2(index: number): TexturedMeshDataV2 {
         const name = this.json.meshes[index]?.name ?? "<unknown>";
         const gPrimitive = this.getMeshPrimitive(index);
@@ -421,17 +562,17 @@ export class Gltf {
                 Uint16Array
             ),
             posBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["POSITION"],
+                gPrimitive.attributes["POSITION"]!,
                 "VEC3",
                 Float32Array
             ),
             normBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["NORMAL"],
+                gPrimitive.attributes["NORMAL"]!,
                 "VEC3",
                 Float32Array
             ),
             uvBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["TEXCOORD_0"],
+                gPrimitive.attributes["TEXCOORD_0"]!,
                 "VEC2",
                 Float32Array
             );
@@ -473,7 +614,7 @@ export class Gltf {
             throw new Error("Unsupported: Multiple UVs");
         }
 
-        return this.getTexture(textureInfo.index);
+        return this.getTextureData(textureInfo.index);
     }
 
     public getNormalMapFromMaterial(
@@ -492,45 +633,214 @@ export class Gltf {
             throw new Error("Unsupported: Multiple UVs");
         }
 
-        return this.getTexture(textureInfo.index);
+        return this.getTextureData(textureInfo.index);
     }
 
-    public getTexture(texId: number) {
-        const gTexture = this.json.textures[texId];
-        if (!gTexture) throw new Error("Texture index OOB");
+    protected getMeshNoCache(index: number): Mesh {
+        const name = this.json.meshes[index]?.name ?? "<unknown>";
+        const gPrimitive = this.getMeshPrimitive(index);
 
-        if (gTexture?.extensions?.EXT_texture_webp?.source === undefined) {
-            throw new Error("No supported textures found.");
-        }
-
-        return {
-            samplerDescriptor: this.getWebgpuSamplerDescriptor(
-                gTexture.sampler
+        const position = nn(
+                gPrimitive.attributes["POSITION"],
+                "Position is required!"
             ),
-            image: this.getImage(gTexture.extensions.EXT_texture_webp.source!),
-        };
-    }
+            normal = nn(
+                gPrimitive.attributes["POSITION"],
+                "Normals are required!"
+            ),
+            texCoord = nn(
+                gPrimitive.attributes["POSITION"],
+                "TexCoord is required!"
+            ),
+            indices = nn(
+                gPrimitive.indices,
+                "Non indexed geometry is not supported, unlucky."
+            ),
+            tangent = gPrimitive.attributes["TANGENT"];
 
-    public getWebgpuSamplerDescriptor(
-        samplerIdx: number
-    ): GPUSamplerDescriptor {
-        const gSampler = this.json.samplers[samplerIdx];
-        if (!gSampler) {
-            throw new Error("Sampler idx OOB");
+        if (gPrimitive.mode !== undefined && gPrimitive.mode != 4) {
+            throw new Error("Unsupported: non-triagle-list geometry");
         }
 
-        return {
-            addressModeU: Gltf.SAMPLER_TO_WGPU[gSampler.wrapS ?? 10497],
-            addressModeV: Gltf.SAMPLER_TO_WGPU[gSampler.wrapT ?? 10497],
-            minFilter: Gltf.getWebGpuSamplerFilter(gSampler.minFilter ?? 9728),
-            magFilter: Gltf.getWebGpuSamplerFilter(gSampler.magFilter ?? 9728),
-        };
+        const indexBuffer = Gltf.cacheOr(this.gpuBufferCache, indices, () =>
+                this.uploadAccesorToGpuWithAssertType(
+                    indices,
+                    "SCALAR",
+                    Uint16Array,
+                    GPUBufferUsage.INDEX,
+                    `${name}:index`
+                )
+            ),
+            posBuffer = Gltf.cacheOr(this.gpuBufferCache, position, () =>
+                this.uploadAccesorToGpuWithAssertType(
+                    position,
+                    "VEC3",
+                    Float32Array,
+                    GPUBufferUsage.VERTEX,
+                    `${name}:position`
+                )
+            ),
+            normBuffer = Gltf.cacheOr(this.gpuBufferCache, normal, () =>
+                this.uploadAccesorToGpuWithAssertType(
+                    normal,
+                    "VEC3",
+                    Float32Array,
+                    GPUBufferUsage.VERTEX,
+                    `${name}:position`
+                )
+            ),
+            texCoordBuffer = Gltf.cacheOr(this.gpuBufferCache, texCoord, () =>
+                this.uploadAccesorToGpuWithAssertType(
+                    texCoord,
+                    "VEC2",
+                    Float32Array,
+                    GPUBufferUsage.VERTEX,
+                    `${name}:position`
+                )
+            ),
+            tangentBuffer =
+                tangent === undefined
+                    ? undefined
+                    : Gltf.cacheOr(this.gpuBufferCache, tangent, () =>
+                          this.uploadAccesorToGpuWithAssertType(
+                              tangent,
+                              "VEC4",
+                              Float32Array,
+                              GPUBufferUsage.VERTEX,
+                              `${name}:position`
+                          )
+                      );
+
+        return new Mesh(
+            posBuffer,
+            normBuffer,
+            texCoordBuffer,
+            tangentBuffer,
+            indexBuffer,
+            indexBuffer.size / 2 // This is just scuffed
+        );
     }
 
-    public getImage(imageIdx: number) {
-        return nn(
-            this.imageCache[imageIdx],
-            "image OOB,  did you forget to call prepareImages()"
+    public getMesh(index: number) {
+        return Gltf.cacheOr(this.meshCache, index, () =>
+            this.getMeshNoCache(index)
+        );
+    }
+
+    protected uploadTexture(index: number) {
+        const image = this.getTextureImage(index);
+
+        const texture = Game.gpu.device.createTexture({
+            //TODO(mbabnik): Grab a label
+            format: "rgba8unorm-srgb",
+            size: [image.width, image.height],
+            usage:
+                GPUTextureUsage.TEXTURE_BINDING |
+                GPUTextureUsage.COPY_DST |
+                GPUTextureUsage.RENDER_ATTACHMENT,
+            mipLevelCount: nMips(image.width, image.height),
+        });
+
+        Game.gpu.device.queue.copyExternalImageToTexture(
+            { source: image },
+            { texture },
+            [image.width, image.height, 1]
+        );
+
+        generateMipmap(Game.gpu.device, texture);
+
+        return texture;
+    }
+
+    protected getGpuTexture(index: number) {
+        return Gltf.cacheOr(this.textureCache, index, () =>
+            this.uploadTexture(index)
+        );
+    }
+
+    protected getMeshMaterialNoCache(index: number): Material {
+        const primitive = this.getMeshPrimitive(index);
+        const matIdx = nn(primitive.material, "Primitive has no material");
+        const gMat = nn(this.json.materials[matIdx], "Mat IDX OOB");
+
+        const pbr = nn(gMat.pbrMetallicRoughness, "Missing PBR component");
+
+        const baseTex = pbr.baseColorTexture
+            ? this.getGpuTexture(pbr.baseColorTexture.index)
+            : undefined;
+        const baseSampler = pbr.baseColorTexture
+            ? Game.gpu.getSampler(
+                  this.getTextureSamplerDescriptor(pbr.baseColorTexture.index)
+              )
+            : undefined;
+        const baseFactor = pbr.baseColorFactor
+            ? vec4.create(...pbr.baseColorFactor)
+            : undefined;
+
+        const mrTex = pbr.metallicRoughnessTexture
+            ? this.getGpuTexture(pbr.metallicRoughnessTexture.index)
+            : undefined;
+        const mrSampler = pbr.metallicRoughnessTexture
+            ? Game.gpu.getSampler(
+                  this.getTextureSamplerDescriptor(
+                      pbr.metallicRoughnessTexture.index
+                  )
+              )
+            : undefined;
+        const metalFactor = pbr.metallicFactor;
+        const roughFactor = pbr.roughnessFactor;
+
+        const emTex = gMat.emissiveTexture
+            ? this.getGpuTexture(gMat.emissiveTexture.index)
+            : undefined;
+        const emSampler = gMat.emissiveTexture
+            ? Game.gpu.getSampler(
+                  this.getTextureSamplerDescriptor(gMat.emissiveTexture.index)
+              )
+            : undefined;
+        const emFactor = gMat.emissiveFactor
+            ? vec3.create(...gMat.emissiveFactor)
+            : undefined;
+
+        return new Material(
+            {
+                texture: baseTex,
+                sampler: baseSampler,
+                factor: baseFactor,
+            },
+            {
+                texture: mrTex,
+                sampler: mrSampler,
+                metalFactor,
+                roughFactor,
+            },
+            gMat.normalTexture
+                ? {
+                      texture: this.getGpuTexture(gMat.normalTexture.index),
+                      sampler: Game.gpu.getSampler(
+                          this.getTextureSamplerDescriptor(
+                              gMat.normalTexture.index
+                          )
+                      ),
+                      scale: gMat.normalTexture.scale ?? 1,
+                  }
+                : undefined,
+            {
+                factor: emFactor,
+                sampler: emSampler,
+                texture: emTex,
+            },
+            {
+                alphaCutoff: gMat.alphaCutoff,
+                mode: Gltf.ALPHA_MODE_MAP[gMat.alphaMode ?? "OPAQUE"],
+            },
+            gMat.name ?? "unknown"
+        );
+    }
+
+    public getMeshMaterial(index: number): Material {
+        return Gltf.cacheOr(this.materialCache, index, () =>
+            this.getMeshMaterialNoCache(index)
         );
     }
 }

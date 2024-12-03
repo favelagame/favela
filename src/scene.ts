@@ -137,7 +137,6 @@ export async function setupScene(ecs: ECS) {
     );
 
     const sponza = await Gltf.fromUrl("sponza.glb");
-    await sponza.prepareImages();
 
     ecs.addSystem(new ScriptSystem());
     ecs.addSystem(new CameraSystem());
@@ -155,34 +154,38 @@ export async function setupScene(ecs: ECS) {
         if (node.matrix) continue;
         if (typeof node.mesh !== "number") continue;
 
-        const e = ecs.addEntity();
-
-        let mesh = meshCache[node.mesh];
-        if (!mesh) {
-            const m = sponza.getTexturedMeshV2(node.mesh);
-            meshCache[node.mesh] = mesh = new GpuTexturedMeshV1(m);
-
-            if (!m.normalTex) {
-                console.warn(e, node.name, m.name, "has no normalmap");
-            }
-        }
-
-        ecs.addComponent(
-            e,
-            new TransformComponent(
-                vec3.create(...(node.translation ?? [0, 0, 0])),
-                quat.create(...(node.rotation ?? [0, 0, 0, 1])),
-                vec3.create(...(node.scale ?? [1, 1, 1]))
-            )
+        console.log(
+            node.name ?? "<unk>",
+            sponza.getMesh(node.mesh),
+            sponza.getMeshMaterial(node.mesh)
         );
+        // const e = ecs.addEntity();
 
-        ecs.addComponent(e, new MeshComponent(mesh, 1, 1, 1));
+        // let mesh = meshCache[node.mesh];
+        // if (!mesh) {
+        //     const m = sponza.getTexturedMeshV2(node.mesh);
+        //     meshCache[node.mesh] = mesh = new GpuTexturedMeshV1(m);
+
+        //     if (!m.normalTex) {
+        //         console.warn(e, node.name, m.name, "has no normalmap");
+        //     }
+        // }
+
+        // ecs.addComponent(
+        //     e,
+        //     new TransformComponent(
+        //         vec3.create(...(node.translation ?? [0, 0, 0])),
+        //         quat.create(...(node.rotation ?? [0, 0, 0, 1])),
+        //         vec3.create(...(node.scale ?? [1, 1, 1]))
+        //     )
+        // );
+
+        // ecs.addComponent(e, new MeshComponent(mesh, 1, 1, 1));
     }
 
     Object.values(meshCache).forEach((x) => x?.upload());
 
     return {
-        material: Material.withoutTextures([1, 0, 0]),
         skyTex,
     };
 }
