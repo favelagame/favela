@@ -26,12 +26,29 @@ export interface IAccessor {
     componentType: TComponentType;
     count: number;
     type: TAccessorType;
-    sparse?: never; // TODO: never
+    sparse?: never; // TODO(not really): Sparse accessors
 }
 //#endregion Accessor
 
 export interface IAnimation extends INamed {
-    _todo: never; //TODO
+    channels: IAnimtionChannel[];
+    samplers: IAnimationSampler[];
+}
+
+export interface IAnimtionChannel extends IBase {
+    sampler: number;
+    target: IAnimtionChannelTarget;
+}
+
+export interface IAnimtionChannelTarget extends IBase {
+    node?: number;
+    path: "translation" | "rotation" | "scale" | "weights" | string;
+}
+
+export interface IAnimationSampler extends IBase {
+    input: number;
+    output: number;
+    interpolation: "LINEAR" | "STEP" | "CUBICSPLINE" | string;
 }
 
 export interface IAsset extends IBase {
@@ -54,9 +71,34 @@ export interface IBufferView extends INamed {
     target?: number;
 }
 
-export interface ICamera extends INamed {
-    _todo: never; //TODO
+export interface ICameraOrtographic extends IBase {
+    xmag: number;
+    ymag: number;
+    zfar: number;
+    znear: number;
 }
+
+export interface ICameraPerspective extends IBase {
+    aspectRatio?: number;
+    yfov: number;
+    znear: number;
+    zfar?: number;
+}
+
+export type TCamera = INamed &
+    (
+        | {
+              type: "perspective";
+              prespective: ICameraPerspective;
+          }
+        | {
+              type: "ortographic";
+              ortographic: ICameraOrtographic;
+          }
+        | {
+              type: string;
+          }
+    );
 
 //#region Image
 export interface IBuferImage extends INamed {
@@ -161,7 +203,9 @@ export interface IScene extends INamed {
 }
 
 export interface ISkin extends INamed {
-    _todo: never; //TODO
+    inverseBindMatrices?: number;
+    skeleton?: number;
+    joints: number[];
 }
 
 export interface ITexture extends INamed {
@@ -189,7 +233,7 @@ export interface IGltfRoot extends IBase {
     asset: IAsset;
     buffers?: IBuffer[];
     bufferViews?: IBufferView[];
-    cameras: ICamera[];
+    cameras?: TCamera[];
     images?: TImage[];
     materials?: IMaterial[];
     meshes?: IMesh[];
