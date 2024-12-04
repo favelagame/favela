@@ -41,7 +41,7 @@ export class ShadePass {
                 },
                 {
                     binding: 3,
-                    resource: Game.gpu.textures.mtlRghEms.view,
+                    resource: Game.gpu.textures.mtlRgh.view,
                 },
                 {
                     binding: 4,

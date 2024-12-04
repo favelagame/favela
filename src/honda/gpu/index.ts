@@ -17,7 +17,8 @@ export class WebGpu {
     public textures = {
         base: new HondaTexture("rgba8unorm-srgb", 1, "g-base"),
         normal: new HondaTexture("rgba8unorm", 1, "g-normal"),
-        mtlRghEms: new HondaTexture("rgba8unorm", 1, "g-metal-rough-emission"),
+        mtlRgh: new HondaTexture("rg8unorm", 1, "g-metal-rough"),
+        emission: new HondaTexture("rgba8unorm", 1, "g-emission"),
         depth: new HondaTexture("depth24plus", 1, "g-depth"),
         ssao: new HondaTexture("r8unorm", 1, "ssao"),
         shaded: new HondaTexture("rgba16float", 1, "shaded"),

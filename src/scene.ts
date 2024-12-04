@@ -12,16 +12,10 @@ import {
 import { quat, vec3 } from "wgpu-matrix";
 
 import { clamp, PI_2 } from "@/honda/util";
-import {
-    MeshComponent,
-    MeshRendererSystem,
-} from "@/honda/systems/meshRenderer";
+import { MeshRendererSystem } from "@/honda/systems/meshRenderer";
 import { setStatus } from "@/honda/util/status";
 import { Gltf } from "@/honda/util/gltf";
-import { GpuMeshV1 } from "@/honda/gpu/meshes/basic.mesh";
-import { GpuTexturedMeshV1 } from "@/honda/gpu/meshes/textured.mesh";
 import { createTextureFromImages } from "webgpu-utils";
-import { Material } from "./honda/gpu/material/material";
 
 // basic deadzone
 function dz(x: number) {
@@ -149,41 +143,20 @@ export async function setupScene(ecs: ECS) {
     ecs.addComponent(camera, new CameraComponent(70, 0.01, 100));
     ecs.addComponent(camera, new ScriptComponent(FlyCameraScript));
 
-    const meshCache: Partial<Record<number, GpuMeshV1>> = {};
-    for (const node of sponza.json.nodes) {
+
+    console.time("wastingTimeUploadingToGPU")
+    const meshNodes = [] as string[];
+    for (const node of sponza.json.nodes!) {
         if (node.matrix) continue;
         if (typeof node.mesh !== "number") continue;
 
-        console.log(
-            node.name ?? "<unk>",
-            sponza.getMesh(node.mesh),
-            sponza.getMeshMaterial(node.mesh)
-        );
-        // const e = ecs.addEntity();
+        meshNodes.push(node.name ?? "<unk>");
 
-        // let mesh = meshCache[node.mesh];
-        // if (!mesh) {
-        //     const m = sponza.getTexturedMeshV2(node.mesh);
-        //     meshCache[node.mesh] = mesh = new GpuTexturedMeshV1(m);
-
-        //     if (!m.normalTex) {
-        //         console.warn(e, node.name, m.name, "has no normalmap");
-        //     }
-        // }
-
-        // ecs.addComponent(
-        //     e,
-        //     new TransformComponent(
-        //         vec3.create(...(node.translation ?? [0, 0, 0])),
-        //         quat.create(...(node.rotation ?? [0, 0, 0, 1])),
-        //         vec3.create(...(node.scale ?? [1, 1, 1]))
-        //     )
-        // );
-
-        // ecs.addComponent(e, new MeshComponent(mesh, 1, 1, 1));
+        sponza.getMesh(node.mesh);
+        sponza.getMeshMaterial(node.mesh);
     }
-
-    Object.values(meshCache).forEach((x) => x?.upload());
+    console.timeEnd("wastingTimeUploadingToGPU")
+    console.log(meshNodes);
 
     return {
         skyTex,

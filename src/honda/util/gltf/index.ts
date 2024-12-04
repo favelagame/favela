@@ -114,16 +114,18 @@ export class Gltf {
     }
 
     public static async fromUrl(url: string) {
+        console.time(url);
         const f = await fetch(url);
         const buf = await f.arrayBuffer();
 
         const gltf = new Gltf(buf, url);
         await gltf.prepareImages();
-
+        console.timeEnd(url);
+        console.table({ assetUrl: url, ...gltf.json.asset });
         return gltf;
     }
 
-    public json: TG.IRoot;
+    public json: TG.IGltfRoot;
 
     protected gpuBufferCache = new Map<number, WeakRef<GPUBuffer>>();
     protected meshCache = new Map<number, WeakRef<Mesh>>();
@@ -187,7 +189,7 @@ export class Gltf {
 
     protected async prepareImages(): Promise<void> {
         this.imageCache = await Promise.all(
-            this.json.images.map((imgDef) => {
+            (this.json.images ?? []).map((imgDef) => {
                 const ibv = this.getBufferView(imgDef.bufferView);
 
                 const base = ibv.bOffset + this.bin.byteOffset;
@@ -232,7 +234,7 @@ export class Gltf {
             );
         }
 
-        const gBuffer = nn(this.json.buffers[index]);
+        const gBuffer = nn(this.json.buffers?.[index]);
 
         if (gBuffer.byteLength != this.bin.byteLength) {
             console.warn(
@@ -243,7 +245,10 @@ export class Gltf {
     }
 
     protected getBufferView(index: number): FavelaBufferView {
-        const gBufferView = nn(this.json.bufferViews[index], "bufferView OOB");
+        const gBufferView = nn(
+            this.json.bufferViews?.[index],
+            "bufferView OOB"
+        );
 
         return {
             buffer: this.getBuffer(gBufferView.buffer),
@@ -254,7 +259,7 @@ export class Gltf {
     }
 
     protected getAccessor(index: number): FavelaAccesor {
-        const gAccessor = nn(this.json.accessors[index], "accessor OOB");
+        const gAccessor = nn(this.json.accessors?.[index], "accessor OOB");
         if (
             gAccessor.normalized ||
             gAccessor.sparse ||
@@ -339,7 +344,7 @@ export class Gltf {
     }
 
     protected getMeshPrimitive(index: number) {
-        const gMesh = nn(this.json.meshes[index], "mesh OOB");
+        const gMesh = nn(this.json.meshes?.[index], "mesh OOB");
 
         if (gMesh.primitives.length > 1) {
             console.warn(
@@ -353,7 +358,7 @@ export class Gltf {
     }
 
     protected getTextureImage(texId: number) {
-        const gTexture = this.json.textures[texId];
+        const gTexture = this.json.textures?.[texId];
         if (!gTexture) throw new Error("Texture index OOB");
 
         const source =
@@ -366,21 +371,22 @@ export class Gltf {
         return this.getImage(source!);
     }
 
-    protected getTextureSamplerDescriptor(texId: number) {
-        const gTexture = this.json.textures[texId];
-        if (!gTexture) throw new Error("Texture index OOB");
+    protected getTextureSamplerDescriptor(texId: number): GPUSamplerDescriptor {
+        const gTexture = nn(this.json.textures?.[texId], "Texture index OOB");
 
         if (gTexture?.extensions?.EXT_texture_webp?.source === undefined) {
             throw new Error("No supported textures found.");
         }
-        return this.getWebgpuSamplerDescriptor(gTexture.sampler);
+        return this.getWebgpuSamplerDescriptor(
+            nn(gTexture.sampler, "NO SAMPLER! Missing default?")
+        );
     }
 
     /**
      * @deprecated
      */
     protected getTextureData(texId: number) {
-        const gTexture = this.json.textures[texId];
+        const gTexture = nn(this.json.textures?.[texId], "Texture index OOB");
         if (!gTexture) throw new Error("Texture index OOB");
 
         if (gTexture?.extensions?.EXT_texture_webp?.source === undefined) {
@@ -389,7 +395,7 @@ export class Gltf {
 
         return {
             samplerDescriptor: this.getWebgpuSamplerDescriptor(
-                gTexture.sampler
+                nn(gTexture.sampler, "NO SAMPLER! Missing default?")
             ),
             image: this.getImage(gTexture.extensions.EXT_texture_webp.source!),
         };
@@ -398,10 +404,10 @@ export class Gltf {
     protected getWebgpuSamplerDescriptor(
         samplerIdx: number
     ): GPUSamplerDescriptor {
-        const gSampler = this.json.samplers[samplerIdx];
-        if (!gSampler) {
-            throw new Error("Sampler idx OOB");
-        }
+        const gSampler = nn(
+            this.json.samplers?.[samplerIdx],
+            "Sampler idx OOB"
+        );
 
         return {
             addressModeU: Gltf.SAMPLER_TO_WGPU[gSampler.wrapS ?? 10497],
@@ -419,7 +425,7 @@ export class Gltf {
     }
 
     public getMeshDataV1(index: number): MeshDataV1 {
-        const name = this.json.meshes[index]?.name ?? "<unknown>";
+        const name = this.json.meshes?.[index]?.name ?? "<unknown>";
         const gPrimitive = this.getMeshPrimitive(index);
 
         if (
@@ -474,7 +480,7 @@ export class Gltf {
      * @deprecated switch to getMesh + getMaterial
      */
     public getTexturedMeshV1(index: number): TexturedMeshDataV1 {
-        const name = this.json.meshes[index]?.name ?? "<unknown>";
+        const name = this.json.meshes?.[index]?.name ?? "<unknown>";
         const gPrimitive = this.getMeshPrimitive(index);
 
         if (
@@ -536,7 +542,7 @@ export class Gltf {
      * @deprecated switch to getMesh + getMaterial
      */
     public getTexturedMeshV2(index: number): TexturedMeshDataV2 {
-        const name = this.json.meshes[index]?.name ?? "<unknown>";
+        const name = this.json.meshes?.[index]?.name ?? "<unknown>";
         const gPrimitive = this.getMeshPrimitive(index);
 
         if (
@@ -597,7 +603,7 @@ export class Gltf {
     }
 
     public getBaseColorTextureFromMaterial(materialIdx: number): TextureV1 {
-        const gMaterial = this.json.materials[materialIdx];
+        const gMaterial = this.json.materials?.[materialIdx];
         if (!gMaterial) throw new Error("Material index OOB");
 
         if (!gMaterial.pbrMetallicRoughness) {
@@ -620,7 +626,7 @@ export class Gltf {
     public getNormalMapFromMaterial(
         materialIdx: number
     ): TextureV1 | undefined {
-        const gMaterial = this.json.materials[materialIdx];
+        const gMaterial = this.json.materials?.[materialIdx];
         if (!gMaterial) throw new Error("Material index OOB");
 
         if (!gMaterial.normalTexture) {
@@ -637,7 +643,7 @@ export class Gltf {
     }
 
     protected getMeshNoCache(index: number): Mesh {
-        const name = this.json.meshes[index]?.name ?? "<unknown>";
+        const name = this.json.meshes?.[index]?.name ?? "<unknown>";
         const gPrimitive = this.getMeshPrimitive(index);
 
         const position = nn(
@@ -761,7 +767,7 @@ export class Gltf {
     protected getMeshMaterialNoCache(index: number): Material {
         const primitive = this.getMeshPrimitive(index);
         const matIdx = nn(primitive.material, "Primitive has no material");
-        const gMat = nn(this.json.materials[matIdx], "Mat IDX OOB");
+        const gMat = nn(this.json.materials?.[matIdx], "Mat IDX OOB");
 
         const pbr = nn(gMat.pbrMetallicRoughness, "Missing PBR component");
 

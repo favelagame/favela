@@ -98,7 +98,7 @@ export class Material {
         };
 
         this.emission = {
-            factor: emission.factor ?? vec3.create(1, 1, 1, 1),
+            factor: emission.factor ?? vec3.create(1, 1, 1),
             sampler: emission.sampler ?? sampler,
             texture: emission.texture ?? texture,
         };

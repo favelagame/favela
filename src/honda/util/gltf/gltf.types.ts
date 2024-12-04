@@ -1,17 +1,13 @@
-export type TTopologyType = 0 | 1 | 2 | 3 | 4 | 5 | 6;
-
-export interface IMeshPrimitive {
-    attributes: Record<string, number | undefined>;
-    indices?: number;
-    material?: number;
-    mode?: TTopologyType;
+export interface IBase {
+    extensions?: Record<string, unknown>;
+    extras?: Record<string, unknown>;
 }
 
-export interface IMesh {
-    name: string;
-    primitives: IMeshPrimitive[];
+export interface INamed extends IBase {
+    name?: string;
 }
 
+//#region Accessor
 export type TComponentType = 5120 | 5121 | 5122 | 5123 | 5125 | 5126;
 export type TAccessorType =
     | "SCALAR"
@@ -32,24 +28,69 @@ export interface IAccessor {
     type: TAccessorType;
     sparse?: never; // TODO: never
 }
+//#endregion Accessor
 
-export interface IBufferView {
-    buffer: number;
-    byteLength: number;
-    byteOffset?: number;
-    target?: number;
+export interface IAnimation extends INamed {
+    _todo: never; //TODO
 }
-export interface IBuffer {
+
+export interface IAsset extends IBase {
+    version: `${number}.${number}`;
+    minVersion?: `${number}.${number}`;
+    copyright?: string;
+    generator?: string;
+}
+
+export interface IBuffer extends INamed {
     byteLength: number;
     uri?: string;
 }
 
-interface ITextureInfo {
-    index: number;
-    texCoord?: number;
+export interface IBufferView extends INamed {
+    buffer: number;
+    byteOffset?: number;
+    byteLength: number;
+    byteStride?: number;
+    target?: number;
 }
 
-export interface IPBRMaterial {
+export interface ICamera extends INamed {
+    _todo: never; //TODO
+}
+
+//#region Image
+export interface IBuferImage extends INamed {
+    mimeType: string;
+    bufferView: number;
+}
+
+export type TImage = IBuferImage; // potentially | IURIImage
+//#endregion Image
+
+//#region Material
+export type TAlphaMode = "OPAQUE" | "MASK" | "BLEND";
+
+export interface IMaterial extends INamed {
+    pbrMetallicRoughness?: IMaterialPBRMetallicRoughness;
+    normalTexture?: IMaterialNormalTextureInfo;
+    occlusionTexture?: IMaterialOcclusionTextureInfo;
+    emissiveTexture?: ITextureInfo;
+    emissiveFactor?: [number, number, number];
+    alphaMode?: TAlphaMode;
+    alphaCutoff?: number;
+    doubleSided?: boolean;
+}
+//#endregion Material
+
+export interface IMaterialNormalTextureInfo extends ITextureInfo {
+    scale?: number;
+}
+
+export interface IMaterialOcclusionTextureInfo extends ITextureInfo {
+    strength?: number;
+}
+
+export interface IMaterialPBRMetallicRoughness extends IBase {
     baseColorFactor?: [number, number, number, number];
     baseColorTexture?: ITextureInfo;
     metallicFactor?: number;
@@ -57,96 +98,105 @@ export interface IPBRMaterial {
     metallicRoughnessTexture?: ITextureInfo;
 }
 
-interface IMaterialNormalTextureInfo extends ITextureInfo {
-    scale?: number;
+export interface IMesh extends INamed {
+    primitives: IMeshPrimitive[];
+    weights?: number[];
 }
 
-interface IMaterialOcclusionTextureInfo {
-    strength?: number;
+//#region MeshPrimitive
+export type TTopologyType = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export interface IMeshPrimitive extends IBase {
+    attributes: Record<string, number | undefined>;
+    indices?: number;
+    material?: number;
+    mode?: TTopologyType;
+    targets?: number[];
 }
+//#endregion MeshPrimitive
 
-export type TAlphaMode = "OPAQUE" | "MASK" | "BLEND";
-
-interface IMaterial {
+//#region Node
+export interface INodeBase extends INamed {
+    camera?: number;
+    children?: number[];
     name?: string;
-
-    pbrMetallicRoughness?: IPBRMaterial;
-    normalTexture?: IMaterialNormalTextureInfo;
-    occlusionTexture?: IMaterialOcclusionTextureInfo;
-    emissiveTexture?: ITextureInfo;
-    emissiveFactor?: [number, number, number];
-
-    alphaMode?: TAlphaMode;
-    alphaCutoff?: number;
-    doubleSided?: boolean;
+    mesh?: number;
+    skin?: number;
+    weights?: number[];
 }
 
-export interface IImage {
-    mimeType: string;
-    bufferView: number;
-    name?: string;
-}
-
-export type TWrap = 33071 | 33648 | 10497;
-export type TFilterBase = 9728 | 9729;
-export type TFilterMag = TFilterBase;
-export type TFilterMin = TFilterBase | 9984 | 9985 | 9986 | 9987;
-
-interface ISampler {
-    magFilter?: TFilterMag;
-    minFilter?: TFilterMin;
-    wrapS?: TWrap;
-    wrapT?: TWrap;
-    name?: string;
-}
-
-interface ITexture {
-    extensions: {
-        EXT_texture_webp?: {
-            source: number;
-        };
-    };
-    source?: number;
-    sampler: number;
-    name?: string;
-}
-
-interface INodeBase {
-    camera?: number; // Reference to the camera index
-    children?: number[]; // Array of child node indices, must be unique
-    name?: string; // Optional name property
-    mesh?: number; // Reference to the mesh index
-    weights?: number[]; // Weights for morph targets, requires 'mesh' if present
-    skin?: number; // Reference to the skin index, requires 'mesh' if present
-}
-
-interface INodeWithMatrix extends INodeBase {
-    matrix: Iterable<number>; // 4x4 column-major matrix
+export interface INodeWithMatrix extends INodeBase {
+    matrix: Iterable<number>;
     translation?: never;
     rotation?: never;
     scale?: never;
 }
 
-interface INodeWithTRS extends INodeBase {
-    translation?: [number, number, number]; // Translation along x, y, z, default: [0.0, 0.0, 0.0]
-    rotation?: [number, number, number, number]; // Quaternion (x, y, z, w), default: [0.0, 0.0, 0.0, 1.0]
-    scale?: [number, number, number]; // Non-uniform scale factors, default: [1.0, 1.0, 1.0]
+export interface INodeWithTRS extends INodeBase {
+    translation?: [number, number, number];
+    rotation?: [number, number, number, number];
+    scale?: [number, number, number];
     matrix?: never;
 }
 
-type TNode = INodeWithMatrix | INodeWithTRS;
+export type TNode = INodeWithMatrix | INodeWithTRS;
+//#endregion Node
 
-export interface IRoot {
-    meshes: IMesh[];
-    accessors: IAccessor[];
-    bufferViews: IBufferView[];
-    buffers: IBuffer[];
-    materials: IMaterial[];
-    images: IImage[];
-    textures: ITexture[];
-    samplers: ISampler[];
-    nodes: TNode[];
+//#region Sampler
+export type TWrap = 33071 | 33648 | 10497;
+export type TFilterBase = 9728 | 9729;
+export type TFilterMag = TFilterBase;
+export type TFilterMin = TFilterBase | 9984 | 9985 | 9986 | 9987;
 
+export interface ISampler extends INamed {
+    magFilter?: TFilterMag;
+    minFilter?: TFilterMin;
+    wrapS?: TWrap;
+    wrapT?: TWrap;
+}
+//#endregion Sampler
+
+export interface IScene extends INamed {
+    nodes?: number[];
+}
+
+export interface ISkin extends INamed {
+    _todo: never; //TODO
+}
+
+export interface ITexture extends INamed {
+    extensions?: {
+        EXT_texture_webp?: {
+            source: number;
+        };
+        [key: string]: unknown;
+    };
+    source?: number;
+    sampler?: number;
+}
+
+export interface ITextureInfo extends IBase {
+    index: number;
+    texCoord?: number;
+}
+
+export interface IGltfRoot extends IBase {
     extensionsUsed?: string[];
     extensionsRequired?: string[];
+
+    accessors?: IAccessor[];
+    animations: IAnimation[];
+    asset: IAsset;
+    buffers?: IBuffer[];
+    bufferViews?: IBufferView[];
+    cameras: ICamera[];
+    images?: TImage[];
+    materials?: IMaterial[];
+    meshes?: IMesh[];
+    nodes?: TNode[];
+    samplers?: ISampler[];
+    scene?: number;
+    scenes?: IScene[];
+    skins?: ISkin[];
+    textures?: ITexture[];
 }
