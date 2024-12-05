@@ -7,7 +7,6 @@ import { Input } from "./honda/input";
 import { perfRenderer } from "./honda/util/perf";
 import { setError, setStatus } from "./honda/util/status";
 import { PostprocessPass } from "./honda/gpu/passes/post.pass";
-import { MeshRendererSystem } from "./honda/systems/meshRenderer";
 import { SSAOPass } from "./honda/gpu/passes/ssao.pass";
 import { ShadePass } from "./honda/gpu/passes/shade.pass";
 import { SkyPass } from "./honda/gpu/passes/sky";
@@ -54,7 +53,6 @@ function frame(t: number) {
             colorAttachments: [],
         })
         .end();
-    ecs.getSystem(MeshRendererSystem).drawToGbuffer();
     skybox.apply();
     ssao.apply();
     shade.apply();

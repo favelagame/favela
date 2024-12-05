@@ -60,7 +60,10 @@ export interface TextureV1 {
     image: ImageBitmap;
 }
 
-export class Gltf {
+/**
+ * # glTF Binary (glb) parser, loader, utility class and more...
+ */
+export class GltfBinary {
     private static readonly MAGIC = 0x46546c67;
     private static readonly CHUNKYTPE_JSON = 0x4e4f534a;
     private static readonly CHUNKTYPE_BIN = 0x004e4942;
@@ -118,7 +121,7 @@ export class Gltf {
         const f = await fetch(url);
         const buf = await f.arrayBuffer();
 
-        const gltf = new Gltf(buf, url);
+        const gltf = new GltfBinary(buf, url);
         await gltf.prepareImages();
         console.timeEnd(url);
         console.table({ assetUrl: url, ...gltf.json.asset });
@@ -157,7 +160,7 @@ export class Gltf {
 
         const [magic, version] = bufU32;
 
-        if (magic != Gltf.MAGIC) {
+        if (magic != GltfBinary.MAGIC) {
             throw new Error("Invalid magic, this isn't glTF");
         }
 
@@ -173,8 +176,8 @@ export class Gltf {
 
             const dv = new DataView(buf, (i + 2) * 4, cLen);
 
-            if (cType == Gltf.CHUNKYTPE_JSON) jsonView = dv;
-            else if (cType == Gltf.CHUNKTYPE_BIN) binView = dv;
+            if (cType == GltfBinary.CHUNKYTPE_JSON) jsonView = dv;
+            else if (cType == GltfBinary.CHUNKTYPE_BIN) binView = dv;
 
             i += Math.ceil(cLen / 4) + 2;
         }
@@ -206,11 +209,11 @@ export class Gltf {
     protected checkExt() {
         const unsupportedRequired =
             this.json?.extensionsRequired?.filter(
-                (ext) => !Gltf.supportedExtensions.includes(ext)
+                (ext) => !GltfBinary.supportedExtensions.includes(ext)
             ) ?? [];
         const unsupportedUsed =
             this.json?.extensionsRequired?.filter(
-                (ext) => !Gltf.supportedExtensions.includes(ext)
+                (ext) => !GltfBinary.supportedExtensions.includes(ext)
             ) ?? [];
 
         if (unsupportedRequired.length > 0) {
@@ -268,12 +271,13 @@ export class Gltf {
             throw new Error("Unsupported");
         }
 
-        const TypedArrayCtor = Gltf.COMP_TYPE_TO_CTOR[gAccessor.componentType];
+        const TypedArrayCtor =
+            GltfBinary.COMP_TYPE_TO_CTOR[gAccessor.componentType];
         const bv = this.getBufferView(gAccessor.bufferView);
 
         const accessor = new TypedArrayCtor(
             bv.buffer,
-            bv.bOffset + this.bin.byteOffset, //FIXME: this can fuck up if there are multiple buffers
+            bv.bOffset + this.bin.byteOffset,
             Math.floor(bv.bLength / TypedArrayCtor.BYTES_PER_ELEMENT) //TODO: is this OK?
         );
 
@@ -410,10 +414,14 @@ export class Gltf {
         );
 
         return {
-            addressModeU: Gltf.SAMPLER_TO_WGPU[gSampler.wrapS ?? 10497],
-            addressModeV: Gltf.SAMPLER_TO_WGPU[gSampler.wrapT ?? 10497],
-            minFilter: Gltf.getWebGpuSamplerFilter(gSampler.minFilter ?? 9728),
-            magFilter: Gltf.getWebGpuSamplerFilter(gSampler.magFilter ?? 9728),
+            addressModeU: GltfBinary.SAMPLER_TO_WGPU[gSampler.wrapS ?? 10497],
+            addressModeV: GltfBinary.SAMPLER_TO_WGPU[gSampler.wrapT ?? 10497],
+            minFilter: GltfBinary.getWebGpuSamplerFilter(
+                gSampler.minFilter ?? 9728
+            ),
+            magFilter: GltfBinary.getWebGpuSamplerFilter(
+                gSampler.magFilter ?? 9728
+            ),
         };
     }
 
@@ -668,16 +676,19 @@ export class Gltf {
             throw new Error("Unsupported: non-triagle-list geometry");
         }
 
-        const indexBuffer = Gltf.cacheOr(this.gpuBufferCache, indices, () =>
-                this.uploadAccesorToGpuWithAssertType(
-                    indices,
-                    "SCALAR",
-                    Uint16Array,
-                    GPUBufferUsage.INDEX,
-                    `${name}:index`
-                )
+        const indexBuffer = GltfBinary.cacheOr(
+                this.gpuBufferCache,
+                indices,
+                () =>
+                    this.uploadAccesorToGpuWithAssertType(
+                        indices,
+                        "SCALAR",
+                        Uint16Array,
+                        GPUBufferUsage.INDEX,
+                        `${name}:index`
+                    )
             ),
-            posBuffer = Gltf.cacheOr(this.gpuBufferCache, position, () =>
+            posBuffer = GltfBinary.cacheOr(this.gpuBufferCache, position, () =>
                 this.uploadAccesorToGpuWithAssertType(
                     position,
                     "VEC3",
@@ -686,7 +697,7 @@ export class Gltf {
                     `${name}:position`
                 )
             ),
-            normBuffer = Gltf.cacheOr(this.gpuBufferCache, normal, () =>
+            normBuffer = GltfBinary.cacheOr(this.gpuBufferCache, normal, () =>
                 this.uploadAccesorToGpuWithAssertType(
                     normal,
                     "VEC3",
@@ -695,19 +706,22 @@ export class Gltf {
                     `${name}:position`
                 )
             ),
-            texCoordBuffer = Gltf.cacheOr(this.gpuBufferCache, texCoord, () =>
-                this.uploadAccesorToGpuWithAssertType(
-                    texCoord,
-                    "VEC2",
-                    Float32Array,
-                    GPUBufferUsage.VERTEX,
-                    `${name}:position`
-                )
+            texCoordBuffer = GltfBinary.cacheOr(
+                this.gpuBufferCache,
+                texCoord,
+                () =>
+                    this.uploadAccesorToGpuWithAssertType(
+                        texCoord,
+                        "VEC2",
+                        Float32Array,
+                        GPUBufferUsage.VERTEX,
+                        `${name}:position`
+                    )
             ),
             tangentBuffer =
                 tangent === undefined
                     ? undefined
-                    : Gltf.cacheOr(this.gpuBufferCache, tangent, () =>
+                    : GltfBinary.cacheOr(this.gpuBufferCache, tangent, () =>
                           this.uploadAccesorToGpuWithAssertType(
                               tangent,
                               "VEC4",
@@ -728,7 +742,7 @@ export class Gltf {
     }
 
     public getMesh(index: number) {
-        return Gltf.cacheOr(this.meshCache, index, () =>
+        return GltfBinary.cacheOr(this.meshCache, index, () =>
             this.getMeshNoCache(index)
         );
     }
@@ -759,7 +773,7 @@ export class Gltf {
     }
 
     protected getGpuTexture(index: number) {
-        return Gltf.cacheOr(this.textureCache, index, () =>
+        return GltfBinary.cacheOr(this.textureCache, index, () =>
             this.uploadTexture(index)
         );
     }
@@ -838,15 +852,35 @@ export class Gltf {
             },
             {
                 alphaCutoff: gMat.alphaCutoff,
-                mode: Gltf.ALPHA_MODE_MAP[gMat.alphaMode ?? "OPAQUE"],
+                mode: GltfBinary.ALPHA_MODE_MAP[gMat.alphaMode ?? "OPAQUE"],
             },
             gMat.name ?? "unknown"
         );
     }
 
     public getMeshMaterial(index: number): Material {
-        return Gltf.cacheOr(this.materialCache, index, () =>
+        return GltfBinary.cacheOr(this.materialCache, index, () =>
             this.getMeshMaterialNoCache(index)
         );
+    }
+
+    public defaultScene(): TG.IScene {
+        return nn(
+            this.json.scenes?.[nn(this.json.scene, "No default scene")],
+            "Default scene OOB"
+        );
+    }
+
+    public getScene(id: number): TG.IScene;
+    public getScene(name: string): TG.IScene;
+    public getScene(arg: string | number) {
+        if (typeof arg == "string") {
+            return nn(
+                this.json.scenes?.find((x) => x.name == arg),
+                "No matching scene"
+            );
+        }
+
+        return nn(this.json.scenes?.[arg], "Scene idx OOB");
     }
 }

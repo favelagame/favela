@@ -2,6 +2,7 @@ import { vec3, vec4 } from "wgpu-matrix";
 import * as Mat from "./material.types";
 import { Game } from "@/honda/state";
 import { makeShaderDataDefinitions, makeStructuredView } from "webgpu-utils";
+import { getNewResourceId } from "@/honda/util/resource";
 export const TRANSPARENCY_BIT = 0x1;
 export const NORMALMAP_BIT = 0x2;
 
@@ -59,6 +60,7 @@ export class Material {
     }
 
     public readonly type: number;
+    public readonly id: number;
 
     public bindGroup!: GPUBindGroup;
     protected materialData!: GPUBuffer;
@@ -76,6 +78,7 @@ export class Material {
         alpha: Partial<Mat.Alpha>,
         public readonly label?: string
     ) {
+        this.id = getNewResourceId();
         const sampler = Game.gpu.getSampler({
             magFilter: "linear",
             minFilter: "linear",

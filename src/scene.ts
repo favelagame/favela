@@ -5,6 +5,8 @@ import {
     EcsInjectable,
     Game,
     HondaBehavior,
+    MeshComponent,
+    MeshSystem,
     ScriptComponent,
     ScriptSystem,
     TransformComponent,
@@ -12,9 +14,8 @@ import {
 import { quat, vec3 } from "wgpu-matrix";
 
 import { clamp, PI_2 } from "@/honda/util";
-import { MeshRendererSystem } from "@/honda/systems/meshRenderer";
 import { setStatus } from "@/honda/util/status";
-import { Gltf } from "@/honda/util/gltf";
+import { GltfBinary } from "@/honda/util/gltf";
 import { createTextureFromImages } from "webgpu-utils";
 
 // basic deadzone
@@ -130,32 +131,49 @@ export async function setupScene(ecs: ECS) {
         { mips: true }
     );
 
-    const sponza = await Gltf.fromUrl("sponza.glb");
+    const sponza = await GltfBinary.fromUrl("sponza.glb");
 
     ecs.addSystem(new ScriptSystem());
     ecs.addSystem(new CameraSystem());
-    ecs.addSystem(
-        new MeshRendererSystem(vec3.normalize(vec3.create(-1, 2, 3)))
-    );
+    ecs.addSystem(new MeshSystem());
 
     const camera = ecs.addEntity();
     ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));
     ecs.addComponent(camera, new CameraComponent(70, 0.01, 100));
     ecs.addComponent(camera, new ScriptComponent(FlyCameraScript));
 
+    console.time("wastingTimeUploadingToGPU");
 
-    console.time("wastingTimeUploadingToGPU")
-    const meshNodes = [] as string[];
-    for (const node of sponza.json.nodes!) {
+    const scene = sponza.defaultScene();
+    console.log(scene);
+
+    const meshNodes = [];
+    for (const nodeIdx of scene.nodes ?? []) {
+        const node = sponza.json.nodes![nodeIdx]!;
         if (node.matrix) continue;
         if (typeof node.mesh !== "number") continue;
 
+        if (node.children) {
+            console.log(node.children);
+        }
+
         meshNodes.push(node.name ?? "<unk>");
 
-        sponza.getMesh(node.mesh);
-        sponza.getMeshMaterial(node.mesh);
+        const me = sponza.getMesh(node.mesh);
+        const ma = sponza.getMeshMaterial(node.mesh);
+
+        const eidx = ecs.addEntity();
+        ecs.addComponent(
+            eidx,
+            new TransformComponent(
+                vec3.fromValues(...(node.translation ?? [0, 0, 0])),
+                quat.fromValues(...(node.rotation ?? [0, 0, 0, 1])),
+                vec3.fromValues(...(node.scale ?? [1, 1, 1]))
+            )
+        );
+        ecs.addComponent(eidx, new MeshComponent(me, ma));
     }
-    console.timeEnd("wastingTimeUploadingToGPU")
+    console.timeEnd("wastingTimeUploadingToGPU");
     console.log(meshNodes);
 
     return {
