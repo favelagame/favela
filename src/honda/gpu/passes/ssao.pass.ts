@@ -102,7 +102,9 @@ export class SSAOPass implements IPass {
             size: [4, 4, 1],
             usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING,
         });
-        this.noiseTextureView = this.noiseTexture.createView();
+        this.noiseTextureView = this.noiseTexture.createView({
+            label: "ssao:noise",
+        });
 
         Game.gpu.device.queue.writeTexture(
             {

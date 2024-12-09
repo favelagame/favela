@@ -148,7 +148,9 @@ export class WebGpu {
         // Chrome seems to pass a "new?" frame every time, firefox reuses the same one
         if (this.canvasTexture != this.ctx.getCurrentTexture()) {
             this.canvasTexture = this.ctx.getCurrentTexture();
-            this.canvasView = this.canvasTexture.createView();
+            this.canvasView = this.canvasTexture.createView({
+                label: "canvasView",
+            });
         }
 
         this.queryIndex = 0;

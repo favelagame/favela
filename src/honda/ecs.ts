@@ -92,7 +92,7 @@ export class ECS {
         this.checkE(entity);
     }
 
-    public addSystem(system: System): void {
+    public addSystem(system: System): ECS {
         // Checking invariant: systems should not have an empty
         // Components list, or they'll run on every entity. Simply remove
         // or special case this check if you do want a System that runs
@@ -100,7 +100,7 @@ export class ECS {
         if (system.componentsRequired.size == 0) {
             console.warn("System not added: empty Components list.");
             console.warn(system);
-            return;
+            return this;
         }
 
         // Give system a reference to the ECS so it can actually do
@@ -112,6 +112,8 @@ export class ECS {
         for (const entity of this.entities.keys()) {
             this.checkES(entity, system);
         }
+
+        return this;
     }
 
     /**

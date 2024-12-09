@@ -5,7 +5,7 @@ import { makeStructuredView } from "webgpu-utils";
 import { mat4 } from "wgpu-matrix";
 import { IPass } from "../pass.interface";
 
-//TODO: move skybox out of ctor 
+//TODO: move skybox out of ctor
 // (add scene system or make a global object (sth like Game.scene.envmap))
 
 export class SkyPass implements IPass {
@@ -61,6 +61,7 @@ export class SkyPass implements IPass {
                 {
                     binding: 2,
                     resource: cubemap.createView({
+                        label: cubemap.label,
                         dimension: "cube",
                     }),
                 },
@@ -73,7 +74,10 @@ export class SkyPass implements IPass {
     apply(): void {
         const csys = Game.ecs.getSystem(CameraSystem);
 
-        mat4.copy(csys.activeCameraTransfrom.invMatrix, this._viewProjNoTranslation);
+        mat4.copy(
+            csys.activeCameraTransfrom.invMatrix,
+            this._viewProjNoTranslation
+        );
         this._viewProjNoTranslation[12] = 0;
         this._viewProjNoTranslation[13] = 0;
         this._viewProjNoTranslation[14] = 0;
@@ -95,7 +99,7 @@ export class SkyPass implements IPass {
             ],
             timestampWrites: Game.gpu.timestamp("sky"),
         });
-        
+
         post.setPipeline(Game.gpu.pipelines.sky);
         Game.gpu.device.queue.writeBuffer(
             this.uniformsBuf,

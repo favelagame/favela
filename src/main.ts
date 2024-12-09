@@ -1,7 +1,14 @@
 import "reflect-metadata";
 
 import { WebGpu } from "@/honda/gpu";
-import { ECS, Game } from "@/honda/core";
+import {
+    CameraSystem,
+    ECS,
+    Game,
+    LightSystem,
+    MeshSystem,
+    ScriptSystem,
+} from "@/honda/core";
 import { setupScene } from "./scene";
 import { Input } from "./honda/input";
 import { perfRenderer } from "./honda/util/perf";
@@ -23,6 +30,12 @@ try {
 Game.input = new Input(canvas);
 const ecs = new ECS();
 Game.ecs = ecs;
+
+ecs.addSystem(new ScriptSystem())
+    .addSystem(new CameraSystem())
+    .addSystem(new MeshSystem())
+    .addSystem(new LightSystem());
+
 const extras = await setupScene(ecs);
 
 const passes = [
@@ -44,8 +57,8 @@ function frame(t: number) {
     Game.gpu.frameStart();
 
     ecs.update();
-        
-    passes.forEach(x=>x.apply());
+
+    passes.forEach((x) => x.apply());
 
     Game.input.endFrame();
     Game.gpu.endFrame();

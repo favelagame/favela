@@ -1,7 +1,11 @@
 export * from "./ecs";
 export * from "./state";
-export * from "./systems/mesh";
+
 export * from "./systems/transform";
-export * from "./systems/script";
-export * from "./systems/cameraSystem";
+export * from "./systems/mesh";
+export * from "./systems/light"; // lights
+export * from "./systems/camera"; // camera
+export * from "./systems/script"; // action (digighouls reference)
+
 export * from "./gpu/material/material";
+export * from "./gpu/meshes/mesh";

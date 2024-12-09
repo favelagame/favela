@@ -165,6 +165,12 @@ export interface INodeBase extends INamed {
     mesh?: number;
     skin?: number;
     weights?: number[];
+
+    extensions?: {
+        KHR_lights_punctual?: {
+            light: number;
+        };
+    };
 }
 
 export interface INodeWithMatrix extends INodeBase {
@@ -224,6 +230,21 @@ export interface ITextureInfo extends IBase {
     texCoord?: number;
 }
 
+export type TKhrLightType = "spot" | "point" | "directional" | string;
+
+export interface IKhrLightSpot extends IBase {
+    innerConeAngle?: number;
+    outerConeAngle?: number;
+}
+
+export interface IKhrLight extends INamed {
+    type: TKhrLightType;
+    color?: [number, number, number];
+    intensity?: number;
+    range?: number;
+    spot?: IKhrLightSpot;
+}
+
 export interface IGltfRoot extends IBase {
     extensionsUsed?: string[];
     extensionsRequired?: string[];
@@ -243,4 +264,10 @@ export interface IGltfRoot extends IBase {
     scenes?: IScene[];
     skins?: ISkin[];
     textures?: ITexture[];
+
+    extensions?: {
+        KHR_lights_punctual?: {
+            lights: IKhrLight[];
+        };
+    };
 }

@@ -1,4 +1,3 @@
-
 export class HondaTexture<Tformat extends GPUTextureFormat> {
     public tex!: GPUTexture;
     public view!: GPUTextureView;
@@ -23,6 +22,8 @@ export class HondaTexture<Tformat extends GPUTextureFormat> {
             // TODO(mbabnik) MSAA?
         });
 
-        this.view = this.tex.createView(); // fries in bag
+        this.view = this.tex.createView({
+            label: `${this.label ?? "<unk>"}:default`,
+        }); // fries in bag
     }
 }

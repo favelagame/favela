@@ -48,6 +48,7 @@ export class GltfBinary {
     public static readonly supportedExtensions: string[] = [
         "EXT_texture_webp",
         "EXT_texture_avif", // i think?
+        "KHR_lights_punctual",
     ];
 
     static readonly COMP_TYPE_TO_CTOR: Record<
@@ -150,7 +151,6 @@ export class GltfBinary {
         for (let i = 3; i < bufU32.length; ) {
             const cLen = bufU32[i];
             const cType = bufU32[i + 1];
-
             const dv = new DataView(buf, (i + 2) * 4, cLen);
 
             if (cType == GltfBinary.CHUNKYTPE_JSON) jsonView = dv;
@@ -493,7 +493,7 @@ export class GltfBinary {
             texCoordBuffer,
             tangentBuffer,
             indexBuffer,
-            (this.json.accessors!)[gPrimitive.indices!].count! // This is just scuffed
+            this.json.accessors![gPrimitive.indices!].count! // This is just scuffed
         );
     }
 

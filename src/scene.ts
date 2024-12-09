@@ -1,16 +1,14 @@
 import {
-    CameraComponent,
-    CameraSystem,
     ECS,
     EcsInjectable,
     Game,
     HondaBehavior,
     MeshComponent,
-    MeshSystem,
     ScriptComponent,
-    ScriptSystem,
+    CameraComponent,
     TransformComponent,
 } from "@/honda/core";
+
 import { quat, vec3 } from "wgpu-matrix";
 
 import { clamp, PI_2 } from "@/honda/util";
@@ -132,10 +130,7 @@ export async function setupScene(ecs: ECS) {
     );
 
     const sponza = await GltfBinary.fromUrl("Sponza4.glb");
-
-    ecs.addSystem(new ScriptSystem());
-    ecs.addSystem(new CameraSystem());
-    ecs.addSystem(new MeshSystem());
+    console.log(await GltfBinary.fromUrl("test.glb"));
 
     const camera = ecs.addEntity();
     ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));

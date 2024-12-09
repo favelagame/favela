@@ -158,7 +158,12 @@ export class Material {
 
         const optionalNormalMap = this.normal
             ? [
-                  { binding: 7, resource: this.normal!.texture.createView() },
+                  {
+                      binding: 7,
+                      resource: this.normal!.texture.createView({
+                          label: `${label}:normalmap`,
+                      }),
+                  },
                   { binding: 8, resource: this.normal!.sampler },
               ]
             : [];
@@ -170,11 +175,26 @@ export class Material {
                 : Game.gpu.bindGroupLayouts.material,
             entries: [
                 { binding: 0, resource: { buffer: this.materialData } },
-                { binding: 1, resource: this.base.texture.createView() },
+                {
+                    binding: 1,
+                    resource: this.base.texture.createView({
+                        label: `${label}:base`,
+                    }),
+                },
                 { binding: 2, resource: this.base.sampler },
-                { binding: 3, resource: this.metalRough.texture.createView() },
+                {
+                    binding: 3,
+                    resource: this.metalRough.texture.createView({
+                        label: `${label}:mtlrghmap`,
+                    }),
+                },
                 { binding: 4, resource: this.metalRough.sampler },
-                { binding: 5, resource: this.emission!.texture.createView() },
+                {
+                    binding: 5,
+                    resource: this.emission!.texture.createView({
+                        label: `${label}:emission`,
+                    }),
+                },
                 { binding: 6, resource: this.emission!.sampler },
                 ...optionalNormalMap,
             ],
