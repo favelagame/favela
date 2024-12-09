@@ -10,6 +10,7 @@ import { PostprocessPass } from "./honda/gpu/passes/post.pass";
 import { SSAOPass } from "./honda/gpu/passes/ssao.pass";
 import { ShadePass } from "./honda/gpu/passes/shade.pass";
 import { SkyPass } from "./honda/gpu/passes/sky";
+import { GBufferPass } from "./honda/gpu/passes/gbuf/gbuf.pass";
 
 const canvas = document.querySelector("canvas")!;
 try {
@@ -22,11 +23,15 @@ try {
 Game.input = new Input(canvas);
 const ecs = new ECS();
 Game.ecs = ecs;
-const ssao = new SSAOPass();
-const shade = new ShadePass();
-const postprocess = new PostprocessPass();
 const extras = await setupScene(ecs);
-const skybox = new SkyPass(extras.skyTex);
+
+const passes = [
+    new GBufferPass(),
+    new SSAOPass(),
+    new ShadePass(),
+    new PostprocessPass(),
+    new SkyPass(extras.skyTex),
+];
 
 setStatus(undefined);
 Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
@@ -39,24 +44,8 @@ function frame(t: number) {
     Game.gpu.frameStart();
 
     ecs.update();
-
-    // Render
-    Game.cmdEncoder
-        .beginRenderPass({
-            label: "clear",
-            depthStencilAttachment: {
-                view: Game.gpu.textures.depth.view,
-                depthLoadOp: "clear",
-                depthStoreOp: "store",
-                depthClearValue: 1,
-            },
-            colorAttachments: [],
-        })
-        .end();
-    skybox.apply();
-    ssao.apply();
-    shade.apply();
-    postprocess.apply();
+        
+    passes.forEach(x=>x.apply());
 
     Game.input.endFrame();
     Game.gpu.endFrame();

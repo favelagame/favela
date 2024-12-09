@@ -2,6 +2,7 @@ import { CameraSystem } from "@/honda/core";
 import { Game } from "@/honda/state";
 import { makeStructuredView } from "webgpu-utils";
 import { vec3 } from "wgpu-matrix";
+import { IPass } from "./pass.interface";
 
 function generateSampleHemisphere(nSamples: number) {
     const arr = new Float32Array(nSamples * 4);
@@ -35,7 +36,7 @@ function generateNoise(size: number) {
     return arr;
 }
 
-export class SSAOPass {
+export class SSAOPass implements IPass {
     protected settings = makeStructuredView(
         Game.gpu.shaderModules.ssao.defs.structs["SSAOCfg"]
     );

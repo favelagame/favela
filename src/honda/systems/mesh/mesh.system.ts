@@ -15,9 +15,8 @@ interface IDrawCall {
 
 export class MeshSystem extends System {
     protected instances: Float32Array;
-    protected instanceBuffer: GPUBuffer;
 
-    public instanceBindGroup: GPUBindGroup;
+    public instanceBuffer: GPUBuffer;
     public calls = [] as IDrawCall[];
 
     constructor(maxInstances: number = 4096) {
@@ -27,17 +26,6 @@ export class MeshSystem extends System {
             label: "MeshInstances",
             size: this.instances.byteLength,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-        });
-
-        this.instanceBindGroup = Game.gpu.device.createBindGroup({
-            label: "MeshBindGroup",
-            layout: Game.gpu.bindGroupLayouts.instance,
-            entries: [
-                {
-                    binding: 0,
-                    resource: { buffer: this.instanceBuffer },
-                },
-            ],
         });
     }
 

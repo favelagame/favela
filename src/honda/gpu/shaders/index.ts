@@ -4,7 +4,7 @@ import {
 } from "webgpu-utils";
 import { WebGpu } from "..";
 
-type ShaderKey = "instancedTexturedMesh" | "postprocess" | "ssao" | "shade" | "sky";
+type ShaderKey = "postprocess" | "ssao" | "shade" | "sky" | "g" | "gnorm";
 
 const shaderSources = import.meta.glob("./*.wgsl", {
     eager: true,

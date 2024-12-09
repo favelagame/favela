@@ -40,47 +40,22 @@ const MATERIAL_BASE = [
 
 export function createBindGroupLayouts(g: WebGpu) {
     return {
-        favelaUniforms: g.device.createBindGroupLayout({
-            label: "favelaUniformsBGL",
-            entries: [
-                {
-                    binding: 0,
-                    visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX,
-                    buffer: {
-                        type: "uniform",
-                    },
-                },
-            ],
-        }),
-        instance: g.device.createBindGroupLayout({
-            label: "instanceBGL",
+        g: g.device.createBindGroupLayout({
+            label: "gBGL",
             entries: [
                 {
                     binding: 0,
                     visibility: GPUShaderStage.VERTEX,
                     buffer: {
-                        type: "read-only-storage",
+                        type: "uniform",
                     },
-                },
-            ],
-        }),
-        textured: g.device.createBindGroupLayout({
-            label: "texturedBGL",
-            entries: [
-                {
-                    binding: 0,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    sampler: {},
                 },
                 {
                     binding: 1,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    texture: {},
-                },
-                {
-                    binding: 2,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    texture: {},
+                    visibility: GPUShaderStage.VERTEX,
+                    buffer: {
+                        type: "read-only-storage",
+                    },
                 },
             ],
         }),

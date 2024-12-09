@@ -1,9 +1,9 @@
 import { Game } from "../state";
 import { nn } from "../util";
 import { createBindGroupLayouts } from "./bindGroupLayouts";
-import { createTexturedMeshInstanced } from "./pipelines/instancedTexturedMesh.pipeline";
 import { createPostProcess } from "./pipelines/postprocess.pipeline";
 import { createShade } from "./pipelines/shade.pipeline";
+import { createG, createGNorm } from "./pipelines/g.pipeline";
 import { createSky } from "./pipelines/sky.pipeline";
 import { createSSAO } from "./pipelines/ssao.pipeline";
 import { createModules } from "./shaders";
@@ -31,7 +31,8 @@ export class WebGpu {
     public shaderModules = createModules(this);
     public bindGroupLayouts = createBindGroupLayouts(this);
     public pipelines = {
-        instancedTextured: createTexturedMeshInstanced(this),
+        g: createG(this),
+        gNorm: createGNorm(this),
         post: createPostProcess(this),
         ssao: createSSAO(this),
         shade: createShade(this),

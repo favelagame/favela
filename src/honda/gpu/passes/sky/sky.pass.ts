@@ -3,8 +3,12 @@ import { SKYBOX_DRAW_COUNT, SKYBOX_VERTS } from "./skybox.const";
 import { CameraSystem } from "@/honda/core";
 import { makeStructuredView } from "webgpu-utils";
 import { mat4 } from "wgpu-matrix";
+import { IPass } from "../pass.interface";
 
-export class SkyPass {
+//TODO: move skybox out of ctor 
+// (add scene system or make a global object (sth like Game.scene.envmap))
+
+export class SkyPass implements IPass {
     protected sampler: GPUSampler;
     protected uniforms = makeStructuredView(
         Game.gpu.shaderModules.sky.defs.structs["SkyUniforms"]
@@ -91,7 +95,7 @@ export class SkyPass {
             ],
             timestampWrites: Game.gpu.timestamp("sky"),
         });
-
+        
         post.setPipeline(Game.gpu.pipelines.sky);
         Game.gpu.device.queue.writeBuffer(
             this.uniformsBuf,

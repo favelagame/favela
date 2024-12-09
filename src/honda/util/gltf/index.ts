@@ -1,6 +1,5 @@
 import { Mesh } from "@/honda/gpu/meshes/mesh";
 import { nMips, nn } from "..";
-import { getNewResourceId } from "../resource";
 import type * as TG from "./gltf.types";
 import { Material } from "@/honda/gpu/material/material";
 import { Game } from "@/honda/state";
@@ -36,28 +35,6 @@ export interface FavelaBufferView {
     isElement: boolean;
     bOffset: number;
     bLength: number;
-}
-
-export interface MeshDataV1 {
-    id: number;
-    name: string;
-    indexBuffer: FavelaAccesor<Uint16Array, "SCALAR">;
-    posBuffer: FavelaAccesor<Float32Array, "VEC3">;
-    normBuffer: FavelaAccesor<Float32Array, "VEC3">;
-    uvBuffer: FavelaAccesor<Float32Array, "VEC2">;
-}
-
-export interface TexturedMeshDataV1 extends MeshDataV1 {
-    baseTex: TextureV1;
-}
-
-export interface TexturedMeshDataV2 extends TexturedMeshDataV1 {
-    normalTex?: TextureV1;
-}
-
-export interface TextureV1 {
-    samplerDescriptor: GPUSamplerDescriptor;
-    image: ImageBitmap;
 }
 
 /**
@@ -378,22 +355,19 @@ export class GltfBinary {
     protected getTextureSamplerDescriptor(texId: number): GPUSamplerDescriptor {
         const gTexture = nn(this.json.textures?.[texId], "Texture index OOB");
 
-        if (gTexture?.extensions?.EXT_texture_webp?.source === undefined) {
-            throw new Error("No supported textures found.");
-        }
         return this.getWebgpuSamplerDescriptor(
             nn(gTexture.sampler, "NO SAMPLER! Missing default?")
         );
     }
 
-    /**
-     * @deprecated
-     */
     protected getTextureData(texId: number) {
         const gTexture = nn(this.json.textures?.[texId], "Texture index OOB");
         if (!gTexture) throw new Error("Texture index OOB");
 
-        if (gTexture?.extensions?.EXT_texture_webp?.source === undefined) {
+        const source =
+            gTexture?.extensions?.EXT_texture_webp?.source ?? gTexture.source;
+
+        if (source === undefined) {
             throw new Error("No supported textures found.");
         }
 
@@ -401,7 +375,7 @@ export class GltfBinary {
             samplerDescriptor: this.getWebgpuSamplerDescriptor(
                 nn(gTexture.sampler, "NO SAMPLER! Missing default?")
             ),
-            image: this.getImage(gTexture.extensions.EXT_texture_webp.source!),
+            image: this.getImage(source),
         };
     }
 
@@ -432,224 +406,6 @@ export class GltfBinary {
         );
     }
 
-    public getMeshDataV1(index: number): MeshDataV1 {
-        const name = this.json.meshes?.[index]?.name ?? "<unknown>";
-        const gPrimitive = this.getMeshPrimitive(index);
-
-        if (
-            !("POSITION" in gPrimitive.attributes) ||
-            !("NORMAL" in gPrimitive.attributes) ||
-            !("TEXCOORD_0" in gPrimitive.attributes)
-        ) {
-            throw new Error("Unsupported: missing attributes");
-        }
-
-        const indices = gPrimitive.indices;
-        if (indices === undefined) {
-            throw new Error("Unsupported: non-indexed geometry");
-        }
-
-        if (gPrimitive.mode !== undefined && gPrimitive.mode != 4) {
-            throw new Error("Unsupported: non-triagle-list geometry");
-        }
-
-        const indexBuffer = this.getAccessorAndAssertType(
-                indices,
-                "SCALAR",
-                Uint16Array
-            ),
-            posBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["POSITION"]!,
-                "VEC3",
-                Float32Array
-            ),
-            normBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["NORMAL"]!,
-                "VEC3",
-                Float32Array
-            ),
-            uvBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["TEXCOORD_0"]!,
-                "VEC2",
-                Float32Array
-            );
-
-        return {
-            id: getNewResourceId(),
-            name,
-            indexBuffer,
-            posBuffer,
-            normBuffer,
-            uvBuffer,
-        };
-    }
-
-    /**
-     * @deprecated switch to getMesh + getMaterial
-     */
-    public getTexturedMeshV1(index: number): TexturedMeshDataV1 {
-        const name = this.json.meshes?.[index]?.name ?? "<unknown>";
-        const gPrimitive = this.getMeshPrimitive(index);
-
-        if (
-            !("POSITION" in gPrimitive.attributes) ||
-            !("NORMAL" in gPrimitive.attributes) ||
-            !("TEXCOORD_0" in gPrimitive.attributes)
-        ) {
-            throw new Error("Unsupported: missing attributes");
-        }
-
-        const indices = gPrimitive.indices;
-        if (indices === undefined) {
-            throw new Error("Unsupported: non-indexed geometry");
-        }
-
-        if (gPrimitive.mode !== undefined && gPrimitive.mode != 4) {
-            throw new Error("Unsupported: non-triagle-list geometry");
-        }
-
-        const indexBuffer = this.getAccessorAndAssertType(
-                indices,
-                "SCALAR",
-                Uint16Array
-            ),
-            posBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["POSITION"]!,
-                "VEC3",
-                Float32Array
-            ),
-            normBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["NORMAL"]!,
-                "VEC3",
-                Float32Array
-            ),
-            uvBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["TEXCOORD_0"]!,
-                "VEC2",
-                Float32Array
-            );
-
-        const materialIdx = gPrimitive.material;
-        if (materialIdx === undefined) {
-            throw new Error("Mesh does not have a material/texture");
-        }
-        const baseTex = this.getBaseColorTextureFromMaterial(materialIdx);
-
-        return {
-            id: getNewResourceId(),
-            name,
-            indexBuffer,
-            posBuffer,
-            normBuffer,
-            uvBuffer,
-            baseTex,
-        };
-    }
-
-    /**
-     * @deprecated switch to getMesh + getMaterial
-     */
-    public getTexturedMeshV2(index: number): TexturedMeshDataV2 {
-        const name = this.json.meshes?.[index]?.name ?? "<unknown>";
-        const gPrimitive = this.getMeshPrimitive(index);
-
-        if (
-            !("POSITION" in gPrimitive.attributes) ||
-            !("NORMAL" in gPrimitive.attributes) ||
-            !("TEXCOORD_0" in gPrimitive.attributes)
-        ) {
-            throw new Error("Unsupported: missing attributes");
-        }
-
-        const indices = gPrimitive.indices;
-        if (indices === undefined) {
-            throw new Error("Unsupported: non-indexed geometry");
-        }
-
-        if (gPrimitive.mode !== undefined && gPrimitive.mode != 4) {
-            throw new Error("Unsupported: non-triagle-list geometry");
-        }
-
-        const indexBuffer = this.getAccessorAndAssertType(
-                indices,
-                "SCALAR",
-                Uint16Array
-            ),
-            posBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["POSITION"]!,
-                "VEC3",
-                Float32Array
-            ),
-            normBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["NORMAL"]!,
-                "VEC3",
-                Float32Array
-            ),
-            uvBuffer = this.getAccessorAndAssertType(
-                gPrimitive.attributes["TEXCOORD_0"]!,
-                "VEC2",
-                Float32Array
-            );
-
-        const materialIdx = gPrimitive.material;
-        if (materialIdx === undefined) {
-            throw new Error("Mesh does not have a material/texture");
-        }
-
-        const baseTex = this.getBaseColorTextureFromMaterial(materialIdx);
-        const normalTex = this.getNormalMapFromMaterial(materialIdx);
-        return {
-            id: getNewResourceId(),
-            name,
-            indexBuffer,
-            posBuffer,
-            normBuffer,
-            uvBuffer,
-            baseTex,
-            normalTex,
-        };
-    }
-
-    public getBaseColorTextureFromMaterial(materialIdx: number): TextureV1 {
-        const gMaterial = this.json.materials?.[materialIdx];
-        if (!gMaterial) throw new Error("Material index OOB");
-
-        if (!gMaterial.pbrMetallicRoughness) {
-            throw new Error("No pbrMetallicRoughness component");
-        }
-
-        if (gMaterial.pbrMetallicRoughness.baseColorTexture === undefined) {
-            throw new Error("No base color texture");
-        }
-
-        const textureInfo = gMaterial.pbrMetallicRoughness.baseColorTexture!;
-
-        if (textureInfo.texCoord !== 0 && textureInfo.texCoord !== undefined) {
-            throw new Error("Unsupported: Multiple UVs");
-        }
-
-        return this.getTextureData(textureInfo.index);
-    }
-
-    public getNormalMapFromMaterial(
-        materialIdx: number
-    ): TextureV1 | undefined {
-        const gMaterial = this.json.materials?.[materialIdx];
-        if (!gMaterial) throw new Error("Material index OOB");
-
-        if (!gMaterial.normalTexture) {
-            return undefined;
-        }
-
-        const textureInfo = gMaterial.normalTexture!;
-
-        if (textureInfo.texCoord !== 0 && textureInfo.texCoord !== undefined) {
-            throw new Error("Unsupported: Multiple UVs");
-        }
-
-        return this.getTextureData(textureInfo.index);
-    }
-
     protected getMeshNoCache(index: number): Mesh {
         const name = this.json.meshes?.[index]?.name ?? "<unknown>";
         const gPrimitive = this.getMeshPrimitive(index);
@@ -659,11 +415,11 @@ export class GltfBinary {
                 "Position is required!"
             ),
             normal = nn(
-                gPrimitive.attributes["POSITION"],
+                gPrimitive.attributes["NORMAL"],
                 "Normals are required!"
             ),
             texCoord = nn(
-                gPrimitive.attributes["POSITION"],
+                gPrimitive.attributes["TEXCOORD_0"],
                 "TexCoord is required!"
             ),
             indices = nn(
@@ -703,7 +459,7 @@ export class GltfBinary {
                     "VEC3",
                     Float32Array,
                     GPUBufferUsage.VERTEX,
-                    `${name}:position`
+                    `${name}:normal`
                 )
             ),
             texCoordBuffer = GltfBinary.cacheOr(
@@ -715,7 +471,7 @@ export class GltfBinary {
                         "VEC2",
                         Float32Array,
                         GPUBufferUsage.VERTEX,
-                        `${name}:position`
+                        `${name}:texCoord`
                     )
             ),
             tangentBuffer =
@@ -727,7 +483,7 @@ export class GltfBinary {
                               "VEC4",
                               Float32Array,
                               GPUBufferUsage.VERTEX,
-                              `${name}:position`
+                              `${name}:tangent`
                           )
                       );
 
@@ -737,7 +493,7 @@ export class GltfBinary {
             texCoordBuffer,
             tangentBuffer,
             indexBuffer,
-            indexBuffer.size / 2 // This is just scuffed
+            (this.json.accessors!)[gPrimitive.indices!].count! // This is just scuffed
         );
     }
 

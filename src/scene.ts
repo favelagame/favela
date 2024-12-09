@@ -131,7 +131,7 @@ export async function setupScene(ecs: ECS) {
         { mips: true }
     );
 
-    const sponza = await GltfBinary.fromUrl("sponza.glb");
+    const sponza = await GltfBinary.fromUrl("Sponza4.glb");
 
     ecs.addSystem(new ScriptSystem());
     ecs.addSystem(new CameraSystem());

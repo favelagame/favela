@@ -2,6 +2,7 @@ import { vec3 } from "wgpu-matrix";
 import { CameraSystem } from "../../core";
 import { Game } from "../../state";
 import { makeStructuredView } from "webgpu-utils";
+import { IPass } from "./pass.interface";
 
 function mode() {
     const map = Game.input.btnMap;
@@ -11,7 +12,7 @@ function mode() {
     return 0;
 }
 
-export class PostprocessPass {
+export class PostprocessPass implements IPass {
     protected settings = makeStructuredView(
         Game.gpu.shaderModules.postprocess.defs.structs["PostCfg"]
     );

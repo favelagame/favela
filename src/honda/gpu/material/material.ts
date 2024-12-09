@@ -101,7 +101,7 @@ export class Material {
         };
 
         this.emission = {
-            factor: emission.factor ?? vec3.create(1, 1, 1),
+            factor: emission.factor ?? vec3.create(0, 0, 0), // no emission by default
             sampler: emission.sampler ?? sampler,
             texture: emission.texture ?? texture,
         };
@@ -137,8 +137,11 @@ export class Material {
             metalFactor: this.metalRough.metalFactor,
             roughFactor: this.metalRough.roughFactor,
             normalScale: this.normal?.scale ?? 1,
-            alphaCutoff: this.alpha.alphaCutoff ?? 0.5,
-            ignoreAlpha: this.alpha.mode == Mat.AlphaMode.OPAQUE,
+            alphaCutoff:
+                this.alpha.mode != Mat.AlphaMode.OPAQUE
+                    ? this.alpha.alphaCutoff ?? 0.5
+                    : 0, // this eliminates a branch in the shader, yay!
+            ignoreAlpha: this.alpha.mode == Mat.AlphaMode.OPAQUE ? 1 : 0,
         });
 
         this.materialData = Game.gpu.device.createBuffer({

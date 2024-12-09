@@ -2,8 +2,9 @@ import { vec3 } from "wgpu-matrix";
 import { CameraSystem } from "../../core";
 import { Game } from "../../state";
 import { makeStructuredView } from "webgpu-utils";
+import { IPass } from "./pass.interface";
 
-export class ShadePass {
+export class ShadePass implements IPass {
     protected settings = makeStructuredView(
         Game.gpu.shaderModules.shade.defs.structs["ShadeUniforms"]
     );
