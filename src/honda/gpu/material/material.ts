@@ -137,10 +137,7 @@ export class Material {
             metalFactor: this.metalRough.metalFactor,
             roughFactor: this.metalRough.roughFactor,
             normalScale: this.normal?.scale ?? 1,
-            alphaCutoff:
-                this.alpha.mode != Mat.AlphaMode.OPAQUE
-                    ? this.alpha.alphaCutoff ?? 0.5
-                    : 0, // this eliminates a branch in the shader, yay!
+            alphaCutoff: this.alpha.alphaCutoff ?? 0.5,
             ignoreAlpha: this.alpha.mode == Mat.AlphaMode.OPAQUE ? 1 : 0,
         });
 

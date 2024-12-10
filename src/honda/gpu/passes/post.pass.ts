@@ -20,8 +20,6 @@ export class PostprocessPass implements IPass {
     protected settingsGpuBuffer: GPUBuffer;
     protected bindGroup!: GPUBindGroup;
 
-    protected sunDir = vec3.normalize(vec3.create(1, 1, 1));
-
     protected guiSettings = {
         fogStart: 0,
         fogEnd: 3,
@@ -83,9 +81,7 @@ export class PostprocessPass implements IPass {
         this.settings.set({
             mode: mode(),
 
-            sunDir: this.sunDir,
-
-            inverseProjection: csys.activeCamera.invMatrix,
+            inverseProjection: csys.activeCamera.projMtxInv,
             camera: csys.activeCameraTransfrom.invMatrix,
 
             ...this.guiSettings,

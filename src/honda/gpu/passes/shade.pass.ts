@@ -1,5 +1,4 @@
-import { vec3 } from "wgpu-matrix";
-import { CameraSystem } from "../../core";
+import { CameraSystem, LightSystem } from "../../core";
 import { Game } from "../../state";
 import { makeStructuredView } from "webgpu-utils";
 import { IPass } from "./pass.interface";
@@ -11,8 +10,6 @@ export class ShadePass implements IPass {
 
     protected uniforms: GPUBuffer;
     protected bindGroup!: GPUBindGroup;
-
-    protected sunDir = vec3.normalize(vec3.create(1, 1, 1));
 
     constructor() {
         this.uniforms = Game.gpu.device.createBuffer({
@@ -34,22 +31,33 @@ export class ShadePass implements IPass {
                 },
                 {
                     binding: 1,
+                    resource: {
+                        buffer: Game.ecs.getSystem(LightSystem).lightsBuf,
+                    },
+                },
+
+                {
+                    binding: 2,
                     resource: Game.gpu.textures.base.view,
                 },
                 {
-                    binding: 2,
+                    binding: 3,
                     resource: Game.gpu.textures.normal.view,
                 },
                 {
-                    binding: 3,
+                    binding: 4,
                     resource: Game.gpu.textures.mtlRgh.view,
                 },
                 {
-                    binding: 4,
+                    binding: 5,
+                    resource: Game.gpu.textures.emission.view,
+                },
+                {
+                    binding: 6,
                     resource: Game.gpu.textures.depth.view,
                 },
                 {
-                    binding: 5,
+                    binding: 7,
                     resource: Game.gpu.getSampler({
                         addressModeU: "clamp-to-edge",
                         addressModeV: "clamp-to-edge",
@@ -68,9 +76,8 @@ export class ShadePass implements IPass {
 
         const csys = Game.ecs.getSystem(CameraSystem);
         this.settings.set({
-            sunDir: this.sunDir,
-            inverseProjection: csys.activeCamera.invMatrix,
-            camera: csys.activeCameraTransfrom.invMatrix,
+            VPInv: csys.viewProjMtxInv,
+            nLights: Game.ecs.getSystem(LightSystem).nLights,
         });
 
         const pass = Game.cmdEncoder.beginRenderPass({

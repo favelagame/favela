@@ -84,7 +84,7 @@ export class SkyPass implements IPass {
 
         this.uniforms.set({
             view: this._viewProjNoTranslation,
-            projection: csys.activeCamera.matrix,
+            projection: csys.activeCamera.projMtx,
         });
 
         const post = Game.cmdEncoder.beginRenderPass({

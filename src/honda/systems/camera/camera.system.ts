@@ -8,8 +8,11 @@ export class CameraSystem extends System {
 
     public activeCamera: CameraComponent = null!;
     public activeCameraTransfrom: TransformComponent = null!;
-    public viewProjectionMatrix = mat4.identity();
-    public viewMatrix = mat4.identity();
+
+    public viewProjMtxInv = mat4.identity();
+    public viewProjMtx = mat4.identity();
+    public viewMtx = mat4.identity();
+    public viewMtxInv = mat4.identity();
 
     public update(entities: Set<Entity>): void {
         for (const ent of entities) {
@@ -20,16 +23,23 @@ export class CameraSystem extends System {
             this.activeCamera = cc;
             this.activeCameraTransfrom = tc;
 
-            // C^1
-            mat4.fromQuat(quat.inverse(tc.rotation), this.viewMatrix);
+            // V = T^-1
+            mat4.fromQuat(quat.inverse(tc.rotation), this.viewMtx);
             mat4.translate(
-                this.viewMatrix,
+                this.viewMtx,
                 vec3.negate(tc.translation),
-                this.viewMatrix
+                this.viewMtx
             );
 
-            // V = P * C^-1
-            mat4.multiply(cc.matrix, this.viewMatrix, this.viewProjectionMatrix);
+            // V^-1 = T
+            mat4.translation(tc.translation, this.viewMtxInv);
+            mat4.multiply(this.viewMtxInv, mat4.fromQuat(tc.rotation), this.viewMtxInv);
+
+            // VP = P * V
+            mat4.multiply(cc.projMtx, this.viewMtx, this.viewProjMtx);
+
+            // (VP)^-1 = V^-1 * P^-1
+            mat4.mul(this.viewMtxInv, cc.projMtxInv, this.viewProjMtxInv);
             break;
         }
     }

@@ -48,7 +48,7 @@ export class GBufferPass implements IPass {
 
     apply(): void {
         const { calls } = Game.ecs.getSystem(MeshSystem);
-        const { viewProjectionMatrix } = Game.ecs.getSystem(CameraSystem);
+        const { viewProjMtx: viewProjectionMatrix } = Game.ecs.getSystem(CameraSystem);
 
         this.uniforms.set({
             viewProjection: viewProjectionMatrix,

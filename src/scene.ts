@@ -7,6 +7,7 @@ import {
     ScriptComponent,
     CameraComponent,
     TransformComponent,
+    LightComponent,
 } from "@/honda/core";
 
 import { quat, vec3 } from "wgpu-matrix";
@@ -129,8 +130,7 @@ export async function setupScene(ecs: ECS) {
         { mips: true }
     );
 
-    const sponza = await GltfBinary.fromUrl("Sponza4.glb");
-    console.log(await GltfBinary.fromUrl("test.glb"));
+    const sponza = await GltfBinary.fromUrl("Sponza5.glb");
 
     const camera = ecs.addEntity();
     ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));
@@ -140,33 +140,45 @@ export async function setupScene(ecs: ECS) {
     console.time("wastingTimeUploadingToGPU");
 
     const scene = sponza.defaultScene();
-    console.log(scene);
 
     const meshNodes = [];
     for (const nodeIdx of scene.nodes ?? []) {
         const node = sponza.json.nodes![nodeIdx]!;
         if (node.matrix) continue;
-        if (typeof node.mesh !== "number") continue;
 
-        if (node.children) {
-            console.log(node.children);
+        if (typeof node.mesh === "number") {
+            meshNodes.push(node.name ?? "<unk>");
+
+            const me = sponza.getMesh(node.mesh);
+            const ma = sponza.getMeshMaterial(node.mesh);
+
+            const eidx = ecs.addEntity();
+            ecs.addComponent(
+                eidx,
+                new TransformComponent(
+                    vec3.fromValues(...(node.translation ?? [0, 0, 0])),
+                    quat.fromValues(...(node.rotation ?? [0, 0, 0, 1])),
+                    vec3.fromValues(...(node.scale ?? [1, 1, 1]))
+                )
+            );
+            ecs.addComponent(eidx, new MeshComponent(me, ma));
         }
 
-        meshNodes.push(node.name ?? "<unk>");
+        if (typeof node.extensions?.KHR_lights_punctual?.light === 'number') {
+            const l = sponza.getLight(node.extensions?.KHR_lights_punctual?.light);
+        
+            const eidx = ecs.addEntity();
+            ecs.addComponent(
+                eidx,
+                new TransformComponent(
+                    vec3.fromValues(...(node.translation ?? [0, 0, 0])),
+                    quat.fromValues(...(node.rotation ?? [0, 0, 0, 1])),
+                    vec3.fromValues(...(node.scale ?? [1, 1, 1]))
+                )
+            );
 
-        const me = sponza.getMesh(node.mesh);
-        const ma = sponza.getMeshMaterial(node.mesh);
-
-        const eidx = ecs.addEntity();
-        ecs.addComponent(
-            eidx,
-            new TransformComponent(
-                vec3.fromValues(...(node.translation ?? [0, 0, 0])),
-                quat.fromValues(...(node.rotation ?? [0, 0, 0, 1])),
-                vec3.fromValues(...(node.scale ?? [1, 1, 1]))
-            )
-        );
-        ecs.addComponent(eidx, new MeshComponent(me, ma));
+            ecs.addComponent(eidx, new LightComponent(l));
+        }
     }
     console.timeEnd("wastingTimeUploadingToGPU");
     console.log(meshNodes);

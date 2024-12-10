@@ -74,7 +74,7 @@ fn vertex_main(input: VertexIn) -> VertexOutput {
 @fragment
 fn fragment_main(input: VertexOutput) -> Gbuffer {
     let base = textureSample(tBase, sBase, input.uv) * material.baseFactor;
-    if material.ignoreAlpha < 1 && base.w < material.alphaCutoff {discard;}
+    if base.a < material.alphaCutoff {discard;}
     let mtlRgh = textureSample(tMtlRgh, sMtlRgh, input.uv).zy * vec2f(material.metalFactor, material.roughFactor);
     let ems = textureSample(tEms, sEms, input.uv).xyz * material.emissionFactor;
 

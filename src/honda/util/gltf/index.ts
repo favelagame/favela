@@ -6,6 +6,12 @@ import { Game } from "@/honda/state";
 import { generateMipmap } from "webgpu-utils";
 import { vec3, vec4 } from "wgpu-matrix";
 import { AlphaMode } from "@/honda/gpu/material/material.types";
+import {
+    IDirectionalLight,
+    IPointLight,
+    ISpotLight,
+    THondaLight,
+} from "@/honda/systems/light/lights.interface";
 
 export type TTypedArrayCtor<T> = {
     new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
@@ -638,5 +644,42 @@ export class GltfBinary {
         }
 
         return nn(this.json.scenes?.[arg], "Scene idx OOB");
+    }
+
+    public getLight(id: number): THondaLight {
+        const gLight = nn(
+            this.json.extensions?.KHR_lights_punctual?.lights[id],
+            "Light ID OOB"
+        );
+
+        switch (gLight.type) {
+            case "spot":
+                return {
+                    type: "spot",
+                    color: gLight.color ?? [1, 1, 1],
+                    intersity: gLight.intensity ?? 1,
+                    maxRange: gLight.range ?? 100000,
+                    innerCone: gLight.spot?.innerConeAngle ?? 0,
+                    outerCone: gLight.spot?.outerConeAngle ?? Math.PI / 4,
+                } satisfies ISpotLight;
+                
+            case "point":
+                return {
+                    type: "point",
+                    color: gLight.color ?? [1, 1, 1],
+                    intersity: gLight.intensity ?? 1,
+                    maxRange: gLight.range ?? 100000,
+                } satisfies IPointLight;
+
+            case "directional":
+                return {
+                    type: "directional",
+                    color: gLight.color ?? [1, 1, 1],
+                    intersity: gLight.intensity ?? 1,
+                } satisfies IDirectionalLight;
+
+            default:
+                throw new Error("Unknown light type" + gLight.type);
+        }
     }
 }

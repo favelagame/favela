@@ -2,7 +2,6 @@
 struct PostCfg {
     inverseProjection: mat4x4f,
     camera: mat4x4f,
-    sunDir: vec3f,
 
     fogColor: vec3f,
     fogStart: f32,

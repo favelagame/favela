@@ -127,7 +127,9 @@ export function createBindGroupLayouts(g: WebGpu) {
                 {
                     binding: 1,
                     visibility: GPUShaderStage.FRAGMENT,
-                    texture: {},
+                    buffer: {
+                        type: "uniform",
+                    },
                 },
                 {
                     binding: 2,
@@ -142,10 +144,20 @@ export function createBindGroupLayouts(g: WebGpu) {
                 {
                     binding: 4,
                     visibility: GPUShaderStage.FRAGMENT,
-                    texture: { sampleType: "depth" },
+                    texture: {},
                 },
                 {
                     binding: 5,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: { },
+                },
+                {
+                    binding: 6,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: { sampleType: "depth" },
+                },
+                {
+                    binding: 7,
                     visibility: GPUShaderStage.FRAGMENT,
                     sampler: {},
                 },

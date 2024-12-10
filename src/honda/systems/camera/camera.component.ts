@@ -62,12 +62,12 @@ export class CameraComponent {
         this.dirty = false;
     }
 
-    public get matrix() {
+    public get projMtx() {
         if (Game.gpu.aspectRatio != this.currentAspect || this.dirty) this.recompute();
         return this.projectionMtx;
     }
 
-    public get invMatrix() {
+    public get projMtxInv() {
         if (Game.gpu.aspectRatio != this.currentAspect || this.dirty) this.recompute();
         return this.invProjectionMtx;
     }

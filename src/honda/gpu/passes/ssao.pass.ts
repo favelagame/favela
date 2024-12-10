@@ -134,8 +134,8 @@ export class SSAOPass implements IPass {
         const csys = Game.ecs.getSystem(CameraSystem);
         const camera = csys.activeCamera;
         this.settings.set({
-            projection: camera.matrix,
-            inverseProjection: camera.invMatrix,
+            projection: camera.projMtx,
+            inverseProjection: camera.projMtxInv,
             samples: this.ssaoSamples,
             camera: csys.activeCameraTransfrom.invMatrix,
 
