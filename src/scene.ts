@@ -130,12 +130,29 @@ export async function setupScene(ecs: ECS) {
         { mips: true }
     );
 
+    // const sponza = await GltfBinary.fromUrl("Sponza5.glb");
     const sponza = await GltfBinary.fromUrl("Sponza5.glb");
 
-    const camera = ecs.addEntity();
-    ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));
-    ecs.addComponent(camera, new CameraComponent(70, 0.01, 100));
-    ecs.addComponent(camera, new ScriptComponent(FlyCameraScript));
+    // {
+    //     const l1 = ecs.addEntity();
+    //     ecs.addComponent(l1, new TransformComponent(vec3.create(2, 2, 2)));
+    //     ecs.addComponent(
+    //         l1,
+    //         new LightComponent({
+    //             type: "point",
+    //             maxRange: 1000,
+    //             color: [1, 0, 0],
+    //             intensity: 1,
+    //         })
+    //     );
+    // }
+
+    {
+        const camera = ecs.addEntity();
+        ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));
+        ecs.addComponent(camera, new CameraComponent(70, 0.01, 100));
+        ecs.addComponent(camera, new ScriptComponent(FlyCameraScript));
+    }
 
     console.time("wastingTimeUploadingToGPU");
 
@@ -164,9 +181,11 @@ export async function setupScene(ecs: ECS) {
             ecs.addComponent(eidx, new MeshComponent(me, ma));
         }
 
-        if (typeof node.extensions?.KHR_lights_punctual?.light === 'number') {
-            const l = sponza.getLight(node.extensions?.KHR_lights_punctual?.light);
-        
+        if (typeof node.extensions?.KHR_lights_punctual?.light === "number") {
+            const l = sponza.getLight(
+                node.extensions?.KHR_lights_punctual?.light
+            );
+
             const eidx = ecs.addEntity();
             ecs.addComponent(
                 eidx,

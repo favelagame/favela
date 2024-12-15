@@ -1,6 +1,6 @@
 interface IBaseLight {
     color: [number, number, number];
-    intersity: number;
+    intensity: number;
 }
 
 export interface IPointLight extends IBaseLight {

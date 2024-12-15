@@ -12,6 +12,7 @@ struct PostCfg {
 
     occlusionPower: f32,
     exposure: f32,
+    gamma: f32,
 };
 
 const bigTri = array(
@@ -85,7 +86,9 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
 
         let toneMappedColor = reinhardToneMap(shadedColor, post.exposure);
 
-        return vec4f(toneMappedColor, 1.0);
+        let gammaCorrected =pow(toneMappedColor, vec3(1.0 / post.gamma));
+
+        return vec4f(gammaCorrected, 1.0);
     } else { // Shade only 
         return vec4f(textureLoad(shaded, p, 0).xyz, 1.0);
     }

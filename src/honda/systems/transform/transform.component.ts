@@ -23,11 +23,11 @@ export class TransformComponent extends Component {
         mat4.translate(this.matrix, this.translation, this.matrix);
         mat4.multiply(this.matrix, mat4.fromQuat(this.rotation), this.matrix);
         mat4.scale(this.matrix, this.scale, this.matrix);
-        
-        mat4.identity(this.invMatrix);
-        mat4.scale(this.invMatrix, vec3.inverse(this.scale), this.invMatrix);
-        mat4.multiply(this.invMatrix, mat4.fromQuat(quat.inverse(this.rotation)), this.invMatrix);
-        mat4.translate(this.invMatrix, vec3.negate(this.translation), this.invMatrix); 
+
+        mat4.inverse(this.matrix, this.invMatrix);
+        // mat4.identity(this.invMatrix);
+        // mat4.scale(this.invMatrix, vec3.inverse(this.scale), this.invMatrix);
+        // mat4.multiply(this.invMatrix, mat4.fromQuat(quat.inverse(this.rotation)), this.invMatrix);
+        // mat4.translate(this.invMatrix, vec3.negate(this.translation), this.invMatrix);
     }
-    
 }

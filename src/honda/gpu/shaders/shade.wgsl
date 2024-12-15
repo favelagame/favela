@@ -74,11 +74,11 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
     );
 
     let bas = textureLoad(gBase, fc, 0).rgb;
-    let nor = normalize(textureLoad(gNorm, fc, 0).rgb * 2.0 - vec3f(1.0));
+    let nor = normalize(textureLoad(gNorm, fc, 0).rgb * 2.0 - 1.0);
     let metRgh = textureLoad(gMetRgh, fc, 0).rg;
     let ems = textureLoad(gEms, fc, 0).rgb;
 
-    var lit = vec3f(0.0); 
+    var lit = vec3f(0.0);
 
     // fries in bag
     for (var i = 0u; i < uni.nLights; i++) {
@@ -96,7 +96,7 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
             if dist > light.maxRange {
                 continue;
             }
-            atten = 1.0 / max(pow(dist, 4), 1.0);
+            atten = 1.0 / max(pow(dist, 2), 0.0001);
         }
 
         if light.ltype == L_SPOT {
@@ -117,14 +117,14 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
 
         // Diffuse
         let NdotL = max(dot(nor, lightDir), 0.0);
-        let dif = bas * light.color * atten * NdotL * light.intensity * 0.1;
+        let dif = bas * light.color * atten * NdotL * (light.intensity);
 
         //TODO: Specular
 
         lit += dif;
     }
-
-    lit += bas; // very lazy ambient impl
+    lit /= 50.0;
+    lit += bas * 0.5; // very lazy ambient impl
 
     return vec4f(lit + ems, 1.0);
 }

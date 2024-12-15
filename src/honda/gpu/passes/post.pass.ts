@@ -1,4 +1,3 @@
-import { vec3 } from "wgpu-matrix";
 import { CameraSystem } from "../../core";
 import { Game } from "../../state";
 import { makeStructuredView } from "webgpu-utils";
@@ -28,6 +27,7 @@ export class PostprocessPass implements IPass {
 
         occlusionPower: 1,
         exposure: 1,
+        gamma: 2.2,
     };
 
     constructor() {
@@ -38,6 +38,7 @@ export class PostprocessPass implements IPass {
         p.addColor(this.guiSettings, "fogColor");
         p.add(this.guiSettings, "occlusionPower", 0, 5);
         p.add(this.guiSettings, "exposure", 0, 5);
+        p.add(this.guiSettings, "gamma", 0.01, 5);
 
         this.settingsGpuBuffer = Game.gpu.device.createBuffer({
             size: this.settings.arrayBuffer.byteLength,

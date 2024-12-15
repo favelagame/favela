@@ -29,10 +29,12 @@ struct VertexIn {
 
 struct VertexOutput {
     @builtin(position) pos: vec4f,
-    @location(0) tangent: vec3f,
-    @location(1) normal: vec3f,
-    @location(2) uv: vec2f, 
-    @location(3) w: f32,
+    @location(0) uv: vec2f, 
+
+    @location(1) tangent: vec3f,
+    @location(2) bitangent: vec3f,
+    @location(3) normal: vec3f,
+
 };
 
 struct Gbuffer {
@@ -72,18 +74,21 @@ fn vertex_main(input: VertexIn) -> VertexOutput {
             instance.invTransform[2].xyz
         )
     );
-    // let modelMtx = mat3x3(
-    //     instance.transform[0].xyz,
-    //     instance.transform[1].xyz,
-    //     instance.transform[2].xyz
-    // );
 
-    output.normal = normalMatrix * input.normal;
-    output.tangent = normalMatrix * input.tangent.xyz;
-    output.w = input.tangent.w;
+    //perform vertex part of normal mapping
+
+    let worldNormal = normalize(normalMatrix * input.normal);
+    let worldTangent = normalize(normalMatrix * input.tangent.xyz);
+    let worldBitangent = cross(worldNormal, worldTangent) * input.tangent.w;
+
 
     output.pos = transformedPos;
     output.uv = input.uv;
+
+    output.tangent = worldTangent;
+    output.bitangent = worldBitangent;
+    output.normal = worldNormal;
+
     return output;
 }
 
@@ -95,18 +100,15 @@ fn fragment_main(input: VertexOutput) -> Gbuffer {
     let ems = textureSample(tEms, sEms, input.uv).xyz * material.emissionFactor;
 
     let texNorm = textureSample(tNorm, sNorm, input.uv).xyz * 2.0 - 1.0;
-    let scaledNorm = normalize(texNorm * vec3(vec2(material.normalScale), 1.0));
-    // let scaledNorm = vec3(0.0, 0.0, 1.0);
-    let N = normalize(input.normal);
-    let T = normalize(input.tangent);
-    let B = normalize(cross(N, T) * input.w) ; // yep
-    let TBN = mat3x3(T, B, N);
-    let worldNorm = normalize(TBN * scaledNorm); // fries in bag
+    let tbnMatrix = mat3x3(input.tangent, input.bitangent, input.normal);
+    let worldNormal = normalize(tbnMatrix * (texNorm * vec3(vec2(material.normalScale), 0)));
+    
+    //perform fragment part of normal mapping (output is output.normal)
 
     var output: Gbuffer;
     output.base = vec4f(base.xyz, 1.0);
-    output.normal = vec4f((worldNorm + 1) / 2.0, 0.0);
     output.mtlRgh = mtlRgh;
+    output.normal = vec4((worldNormal + 1.0) / 2.0, 0);
     output.emission = vec4f(ems, 1.0);
     return output;
 }

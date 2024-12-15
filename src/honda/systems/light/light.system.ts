@@ -42,7 +42,7 @@ export class LightSystem extends System {
                     direction: vec3.transformQuat([0, 0, -1], t.rotation),
                     color: l.lightInfo.color,
                     ltype: TYPE_MAP[l.lightInfo.type],
-                    intensity: l.lightInfo.intersity,
+                    intensity: l.lightInfo.intensity,
                     maxRange: (l.lightInfo as IPointLight).maxRange ?? 0,
                     innerCone: (l.lightInfo as ISpotLight).innerCone ?? 0,
                     outerCone: (l.lightInfo as ISpotLight).outerCone ?? 0,

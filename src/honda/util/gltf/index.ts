@@ -227,7 +227,7 @@ export class GltfBinary {
                 `Buffer size mismatch (JSON: ${gBuffer.byteLength} BIN: ${this.bin.byteLength}) `
             );
         }
-        return this.bin.buffer;
+        return this.bin.buffer as ArrayBuffer;
     }
 
     protected getBufferView(index: number): FavelaBufferView {
@@ -514,7 +514,8 @@ export class GltfBinary {
 
         const texture = Game.gpu.device.createTexture({
             //TODO(mbabnik): Grab a label
-            format: "rgba8unorm-srgb",
+            format: "rgba8unorm",
+            viewFormats : [ 'rgba8unorm', 'rgba8unorm-srgb' ], // ummm
             size: [image.width, image.height],
             usage:
                 GPUTextureUsage.TEXTURE_BINDING |
@@ -657,17 +658,17 @@ export class GltfBinary {
                 return {
                     type: "spot",
                     color: gLight.color ?? [1, 1, 1],
-                    intersity: gLight.intensity ?? 1,
+                    intensity: gLight.intensity ?? 1,
                     maxRange: gLight.range ?? 100000,
                     innerCone: gLight.spot?.innerConeAngle ?? 0,
                     outerCone: gLight.spot?.outerConeAngle ?? Math.PI / 4,
                 } satisfies ISpotLight;
-                
+
             case "point":
                 return {
                     type: "point",
                     color: gLight.color ?? [1, 1, 1],
-                    intersity: gLight.intensity ?? 1,
+                    intensity: gLight.intensity ?? 1,
                     maxRange: gLight.range ?? 100000,
                 } satisfies IPointLight;
 
@@ -675,7 +676,7 @@ export class GltfBinary {
                 return {
                     type: "directional",
                     color: gLight.color ?? [1, 1, 1],
-                    intersity: gLight.intensity ?? 1,
+                    intensity: gLight.intensity ?? 1,
                 } satisfies IDirectionalLight;
 
             default:

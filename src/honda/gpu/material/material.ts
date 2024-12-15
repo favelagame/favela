@@ -24,6 +24,7 @@ export class Material {
             Material.defaultTexture = Game.gpu.device.createTexture({
                 label: "MATERIAL_DUMMY",
                 format: "rgba8unorm",
+                viewFormats: ["rgba8unorm", "rgba8unorm-srgb"],
                 size: [1, 1, 1],
                 usage:
                     GPUTextureUsage.TEXTURE_BINDING |
@@ -159,6 +160,7 @@ export class Material {
                       binding: 7,
                       resource: this.normal!.texture.createView({
                           label: `${label}:normalmap`,
+                          format: "rgba8unorm",
                       }),
                   },
                   { binding: 8, resource: this.normal!.sampler },
@@ -176,6 +178,7 @@ export class Material {
                     binding: 1,
                     resource: this.base.texture.createView({
                         label: `${label}:base`,
+                        format: "rgba8unorm-srgb",
                     }),
                 },
                 { binding: 2, resource: this.base.sampler },
@@ -183,6 +186,7 @@ export class Material {
                     binding: 3,
                     resource: this.metalRough.texture.createView({
                         label: `${label}:mtlrghmap`,
+                        format: "rgba8unorm",
                     }),
                 },
                 { binding: 4, resource: this.metalRough.sampler },
@@ -190,6 +194,7 @@ export class Material {
                     binding: 5,
                     resource: this.emission!.texture.createView({
                         label: `${label}:emission`,
+                        format: "rgba8unorm-srgb",
                     }),
                 },
                 { binding: 6, resource: this.emission!.sampler },
