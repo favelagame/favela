@@ -1,6 +1,7 @@
 interface IBaseLight {
     color: [number, number, number];
     intensity: number;
+    castShadows: boolean;
 }
 
 export interface IPointLight extends IBaseLight {

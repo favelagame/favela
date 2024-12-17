@@ -7,22 +7,29 @@ import { createG, createGNorm } from "./pipelines/g.pipeline";
 import { createSky } from "./pipelines/sky.pipeline";
 import { createSSAO } from "./pipelines/ssao.pipeline";
 import { createModules } from "./shaders";
-import { HondaTexture } from "./tex";
-
-const TIMESTAMP_PASS_CAPACITY = 16;
+import { ViewportTexture } from "./textures/viewport";
+import { ShadowMapTexture } from "./textures";
+import { Limits } from "../limits";
+import { createShadow } from "./pipelines/shadow.pipeline";
 
 export class WebGpu {
     private ro: ResizeObserver;
 
     public textures = {
-        base: new HondaTexture("rgba8unorm-srgb", 1, "g-base"),
-        normal: new HondaTexture("rgba8unorm", 1, "g-normal"),
-        mtlRgh: new HondaTexture("rg8unorm", 1, "g-metal-rough"),
-        emission: new HondaTexture("rgba8unorm", 1, "g-emission"),
-        depth: new HondaTexture("depth24plus", 1, "g-depth"),
-        ssao: new HondaTexture("r8unorm", 1, "ssao"),
-        shaded: new HondaTexture("rgba16float", 1, "shaded"),
+        base: new ViewportTexture("rgba8unorm-srgb", 1, "g-base"),
+        normal: new ViewportTexture("rgba8unorm", 1, "g-normal"),
+        mtlRgh: new ViewportTexture("rg8unorm", 1, "g-metal-rough"),
+        emission: new ViewportTexture("rgba8unorm", 1, "g-emission"),
+        depth: new ViewportTexture("depth24plus", 1, "g-depth"),
+        ssao: new ViewportTexture("r8unorm", 1, "ssao"),
+        shaded: new ViewportTexture("rgba16float", 1, "shaded"),
     };
+
+    public shadowmaps = new ShadowMapTexture(
+        Limits.MAX_SHADOWMAPS,
+        1024,
+        "shadowmaps"
+    );
 
     public canvasTexture!: GPUTexture;
     public canvasView!: GPUTextureView;
@@ -33,6 +40,7 @@ export class WebGpu {
     public pipelines = {
         g: createG(this),
         gNorm: createGNorm(this),
+        shadow: createShadow(this),
         post: createPostProcess(this),
         ssao: createSSAO(this),
         shade: createShade(this),
@@ -95,14 +103,15 @@ export class WebGpu {
         console.groupEnd();
 
         this.resizeTextures();
+        this.shadowmaps.alloc(this.device);
         this.ro = new ResizeObserver((e) => this.handleResize(e));
 
         this.querySet = device.createQuerySet({
             type: "timestamp",
-            count: 2 * TIMESTAMP_PASS_CAPACITY,
+            count: 2 * Limits.MAX_GPU_TIMESTAMPS,
         });
         this.queryBuffer = device.createBuffer({
-            size: 8 * 2 * TIMESTAMP_PASS_CAPACITY,
+            size: 8 * 2 * Limits.MAX_GPU_TIMESTAMPS,
             usage:
                 GPUBufferUsage.QUERY_RESOLVE |
                 GPUBufferUsage.STORAGE |
@@ -110,11 +119,16 @@ export class WebGpu {
         });
         this.queryMapBuffer = device.createBuffer({
             label: "MapBuffer",
-            size: 8 * 2 * TIMESTAMP_PASS_CAPACITY,
+            size: 8 * 2 * Limits.MAX_GPU_TIMESTAMPS,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
         });
 
-        // FIXME: Safari (matter reference) doesn't support this.
+        /*
+            FIXME:  Safari (matter reference) doesn't support this.
+            TODO:   a lah nekdo figure-a out ta scaling,
+                    basically hocmo hittat native res 
+                    (think about retina, scaling)
+        */
         this.ro.observe(canvas, { box: "device-pixel-content-box" });
     }
 
@@ -201,7 +215,7 @@ export class WebGpu {
 
     public timestamp(label: string): GPURenderPassTimestampWrites | undefined {
         if (!this.wasQueryReady) return;
-        if (this.queryIndex + 2 > TIMESTAMP_PASS_CAPACITY) {
+        if (this.queryIndex + 2 > Limits.MAX_GPU_TIMESTAMPS) {
             console.warn("Not enough space for timestamps");
             return;
         }

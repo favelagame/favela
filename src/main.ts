@@ -18,6 +18,7 @@ import { SSAOPass } from "./honda/gpu/passes/ssao.pass";
 import { ShadePass } from "./honda/gpu/passes/shade.pass";
 import { SkyPass } from "./honda/gpu/passes/sky";
 import { GBufferPass } from "./honda/gpu/passes/gbuf/gbuf.pass";
+import { ShadowMapPass } from "./honda/gpu/passes/shadow.pass";
 
 const canvas = document.querySelector("canvas")!;
 try {
@@ -41,6 +42,7 @@ const extras = await setupScene(ecs);
 const passes = [
     new GBufferPass(),
     new SSAOPass(),
+    new ShadowMapPass(),
     new ShadePass(),
     new PostprocessPass(),
     new SkyPass(extras.skyTex),

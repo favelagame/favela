@@ -3,6 +3,29 @@ export const TRI_LIST_CULLED = {
     topology: "triangle-list",
 } satisfies GPUPrimitiveState;
 
+export const VERTEX_POS_UV = [
+    {
+        arrayStride: 12,
+        attributes: [
+            {
+                offset: 0,
+                format: "float32x3",
+                shaderLocation: 0,
+            },
+        ],
+    },
+    {
+        arrayStride: 8,
+        attributes: [
+            {
+                offset: 0,
+                format: "float32x2",
+                shaderLocation: 1,
+            },
+        ],
+    },
+] satisfies GPUVertexBufferLayout[];
+
 export const VERTEX_POS_UV_NORM = [
     {
         arrayStride: 12,

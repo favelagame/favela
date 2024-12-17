@@ -79,7 +79,6 @@ fn fragment_main(input: VertexOutput) -> Gbuffer {
     let ems = textureSample(tEms, sEms, input.uv).xyz * material.emissionFactor;
 
     var output: Gbuffer;
-    // this treats ignoreAlpha as always true... Which isn't wrong ig?
     output.base = vec4f(base.xyz, 1.0);
     output.normal = vec4f((input.fragNormal + vec3f(1, 1, 1)) / 2.0, 1.0);
     output.mtlRgh = mtlRgh;

@@ -65,6 +65,19 @@ export class ShadePass implements IPass {
                         minFilter: "linear",
                     }),
                 },
+                {
+                    binding: 8,
+                    resource: Game.gpu.shadowmaps.view,
+                },
+                {
+                    binding: 9,
+                    resource: Game.gpu.device.createSampler({
+                        compare: "less",
+                        minFilter: "linear",
+                        magFilter: "linear",
+                        label: "shadowSampler",
+                    }),
+                },
             ],
         });
     }

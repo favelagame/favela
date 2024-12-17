@@ -130,8 +130,8 @@ export async function setupScene(ecs: ECS) {
         { mips: true }
     );
 
-    // const sponza = await GltfBinary.fromUrl("Sponza5.glb");
     const sponza = await GltfBinary.fromUrl("Sponza5.glb");
+    // const sponza = await GltfBinary.fromUrl("shadowtest.glb");
 
     // {
     //     const l1 = ecs.addEntity();
@@ -157,15 +157,13 @@ export async function setupScene(ecs: ECS) {
     console.time("wastingTimeUploadingToGPU");
 
     const scene = sponza.defaultScene();
+    console.log(sponza);
 
-    const meshNodes = [];
     for (const nodeIdx of scene.nodes ?? []) {
         const node = sponza.json.nodes![nodeIdx]!;
         if (node.matrix) continue;
 
         if (typeof node.mesh === "number") {
-            meshNodes.push(node.name ?? "<unk>");
-
             const me = sponza.getMesh(node.mesh);
             const ma = sponza.getMeshMaterial(node.mesh);
 
@@ -200,7 +198,6 @@ export async function setupScene(ecs: ECS) {
         }
     }
     console.timeEnd("wastingTimeUploadingToGPU");
-    console.log(meshNodes);
 
     return {
         skyTex,

@@ -1,5 +1,6 @@
 export * from "./ecs";
 export * from "./state";
+export * from "./limits";
 
 export * from "./systems/transform";
 export * from "./systems/mesh";

@@ -653,13 +653,19 @@ export class GltfBinary {
             "Light ID OOB"
         );
 
+        const color = gLight.color ?? [1, 1, 1],
+                intensity = gLight.intensity ?? 1,
+                maxRange = gLight.range ?? 100000,
+                castShadows = !(gLight.extras?.['_noshadow']);
+
         switch (gLight.type) {
             case "spot":
                 return {
                     type: "spot",
-                    color: gLight.color ?? [1, 1, 1],
-                    intensity: gLight.intensity ?? 1,
-                    maxRange: gLight.range ?? 100000,
+                    color,
+                    intensity,
+                    maxRange,
+                    castShadows,
                     innerCone: gLight.spot?.innerConeAngle ?? 0,
                     outerCone: gLight.spot?.outerConeAngle ?? Math.PI / 4,
                 } satisfies ISpotLight;
@@ -667,16 +673,18 @@ export class GltfBinary {
             case "point":
                 return {
                     type: "point",
-                    color: gLight.color ?? [1, 1, 1],
-                    intensity: gLight.intensity ?? 1,
-                    maxRange: gLight.range ?? 100000,
+                    color,
+                    intensity,
+                    maxRange,
+                    castShadows,
                 } satisfies IPointLight;
 
             case "directional":
                 return {
                     type: "directional",
-                    color: gLight.color ?? [1, 1, 1],
-                    intensity: gLight.intensity ?? 1,
+                    color,
+                    intensity,
+                    castShadows,
                 } satisfies IDirectionalLight;
 
             default:

@@ -149,7 +149,7 @@ export function createBindGroupLayouts(g: WebGpu) {
                 {
                     binding: 5,
                     visibility: GPUShaderStage.FRAGMENT,
-                    texture: { },
+                    texture: {},
                 },
                 {
                     binding: 6,
@@ -161,11 +161,42 @@ export function createBindGroupLayouts(g: WebGpu) {
                     visibility: GPUShaderStage.FRAGMENT,
                     sampler: {},
                 },
+                {
+                    binding: 8,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: { sampleType: "depth", viewDimension: "2d-array" },
+                },
+                {
+                    binding: 9,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    sampler: { type: "comparison" },
+                },
             ],
         }),
         material: g.device.createBindGroupLayout({
             label: "materialNoNormalBGL",
             entries: MATERIAL_BASE,
+        }),
+        shadow: g.device.createBindGroupLayout({
+            label: "shadowBGL",
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX,
+                    buffer: {
+                        type: "uniform",
+                        hasDynamicOffset: true,
+                        minBindingSize: 64,
+                    },
+                },
+                {
+                    binding: 1,
+                    visibility: GPUShaderStage.VERTEX,
+                    buffer: {
+                        type: "read-only-storage",
+                    },
+                },
+            ],
         }),
         materialNormal: g.device.createBindGroupLayout({
             label: "materialNormalBGL",

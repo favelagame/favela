@@ -10,11 +10,15 @@ struct Light {
     position: vec3f,
     direction: vec3f,
     color: vec3f,
+
     ltype: u32,
     intensity: f32,
     maxRange: f32,
     innerCone: f32,
     outerCone: f32,
+
+    shadowMap: i32,
+    VP: mat4x4f,
 }
 
 const bigTri = array(
@@ -33,6 +37,9 @@ const bigTri = array(
 @group(0) @binding(6) var gDepth: texture_depth_2d;
 
 @group(0) @binding(7) var smp: sampler;
+
+@group(0) @binding(8) var shadowMaps: texture_depth_2d_array;
+@group(0) @binding(9) var shadowSampler: sampler_comparison;
 
 
 const L_POINT = 0u;
@@ -93,9 +100,9 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
             let delta = light.position - pos;
             lightDir = normalize(delta);
             let dist = length(delta);
-            if dist > light.maxRange {
-                continue;
-            }
+            // if dist > light.maxRange {
+            //     continue;
+            // }
             atten = 1.0 / max(pow(dist, 2), 0.0001);
         }
 
@@ -113,7 +120,20 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
                 1.0
             );
         }
-        
+
+        if light.shadowMap >= 0 {
+            let projected = light.VP * vec4(pos, 1.0);
+            let ndc = projected.xyz / projected.w;
+            let texCoords = vec2f(0.5, -0.5) * ndc.xy + 0.5;
+
+            atten *= textureSampleCompare(
+                shadowMaps,
+                shadowSampler,
+                texCoords,
+                light.shadowMap,
+                ndc.z - 0.000001
+            );
+        }
 
         // Diffuse
         let NdotL = max(dot(nor, lightDir), 0.0);
