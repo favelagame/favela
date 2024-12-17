@@ -45,6 +45,7 @@ struct Gbuffer {
 // Pass group
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 @group(0) @binding(1) var<storage, read> instances: array<Instance>;
+
 // Material group
 @group(1) @binding(0) var<uniform> material: Material;
 @group(1) @binding(1) var tBase: texture_2d<f32>;
@@ -56,8 +57,6 @@ struct Gbuffer {
 @group(1) @binding(7) var tNorm: texture_2d<f32>;
 @group(1) @binding(8) var sNorm: sampler;
 
-
-// TODO: NORMAL MAPPING!
 
 @vertex
 fn vertex_main(input: VertexIn) -> VertexOutput {
@@ -72,11 +71,6 @@ fn vertex_main(input: VertexIn) -> VertexOutput {
             instance.invTransform[2].xyz
         )
     );
-    // let modelMtx = mat3x3(
-    //     instance.transform[0].xyz,
-    //     instance.transform[1].xyz,
-    //     instance.transform[2].xyz
-    // );
 
     output.normal = normalMatrix * input.normal;
     output.tangent = normalMatrix * input.tangent.xyz;
@@ -96,7 +90,7 @@ fn fragment_main(input: VertexOutput) -> Gbuffer {
 
     let texNorm = textureSample(tNorm, sNorm, input.uv).xyz * 2.0 - 1.0;
     let scaledNorm = normalize(texNorm * vec3(vec2(material.normalScale), 1.0));
-    // let scaledNorm = vec3(0.0, 0.0, 1.0);
+
     let N = normalize(input.normal);
     let T = normalize(input.tangent);
     let B = normalize(cross(N, T) * input.w) ; // yep

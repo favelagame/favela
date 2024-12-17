@@ -7,6 +7,7 @@ import { IPass } from "../pass.interface";
 
 //TODO: move skybox out of ctor
 // (add scene system or make a global object (sth like Game.scene.envmap))
+// This might be extra relavant when doing IBL
 
 export class SkyPass implements IPass {
     protected sampler: GPUSampler;

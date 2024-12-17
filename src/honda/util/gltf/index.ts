@@ -261,7 +261,7 @@ export class GltfBinary {
         const accessor = new TypedArrayCtor(
             bv.buffer,
             bv.bOffset + this.bin.byteOffset,
-            Math.floor(bv.bLength / TypedArrayCtor.BYTES_PER_ELEMENT) //TODO: is this OK?
+            Math.floor(bv.bLength / TypedArrayCtor.BYTES_PER_ELEMENT)
         );
 
         return {
