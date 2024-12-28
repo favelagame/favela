@@ -13,6 +13,8 @@ struct PostCfg {
     occlusionPower: f32,
     exposure: f32,
     gamma: f32,
+
+    bloom: f32
 };
 
 const bigTri = array(
@@ -61,7 +63,7 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
         let depthValue = textureLoad(depth, p, 0);
         let d = getWorldDepth(depthValue, p);
         let o = textureLoad(ssao, p, 0).x;
-        let shaded = textureLoad(shaded, p, 0) + textureLoad(bloom, p, 0);
+        let shaded = textureLoad(shaded, p, 0) + textureLoad(bloom, p, 0) * post.bloom;
 
         let fogD = clamp(d - post.fogStart, 0.0, post.fogEnd - post.fogStart);
         let fogFactor = min(fogD * post.fogDensity, 1.0);
@@ -70,7 +72,7 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
 
         let toneMappedColor = reinhardToneMap(shadedColor, post.exposure);
 
-        let gammaCorrected =pow(toneMappedColor, vec3(1.0 / post.gamma));
+        let gammaCorrected = pow(toneMappedColor, vec3(1.0 / post.gamma));
 
         return vec4f(gammaCorrected, 1.0);
     } else { // Shade only 

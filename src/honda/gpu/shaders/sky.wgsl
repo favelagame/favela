@@ -29,5 +29,5 @@ fn vertex_main(input: VertexIn) -> VertexOutput {
 
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
-    return textureSample(tSky, tSampler, input.texc) * 2.0;
+    return textureSample(tSky, tSampler, input.texc) * 8.0; // TODO: expose this to the CPU
 }
