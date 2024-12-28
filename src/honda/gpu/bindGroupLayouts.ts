@@ -82,6 +82,11 @@ export function createBindGroupLayouts(g: WebGpu) {
                     visibility: GPUShaderStage.FRAGMENT,
                     texture: {},
                 },
+                {
+                    binding: 4,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: {},
+                },
             ],
         }),
         ssao: g.device.createBindGroupLayout({
@@ -209,6 +214,45 @@ export function createBindGroupLayouts(g: WebGpu) {
                 },
                 {
                     binding: 8, // normal sampler
+                    visibility: GPUShaderStage.FRAGMENT,
+                    sampler: {},
+                },
+            ],
+        }),
+        bloom: g.device.createBindGroupLayout({
+            label: "bloomBGL",
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    buffer: { type: "uniform" },
+                },
+                {
+                    binding: 1,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: {},
+                },
+            ],
+        }),
+        blur: g.device.createBindGroupLayout({
+            label: "blurBGL",
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    buffer: {
+                        type: "uniform",
+                        hasDynamicOffset: true,
+                        minBindingSize: 1280,
+                    },
+                },
+                {
+                    binding: 1,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: {},
+                },
+                {
+                    binding: 2,
                     visibility: GPUShaderStage.FRAGMENT,
                     sampler: {},
                 },

@@ -1,16 +1,12 @@
-import { Game } from "../state";
 import { nn } from "../util";
-import { createBindGroupLayouts } from "./bindGroupLayouts";
-import { createPostProcess } from "./pipelines/postprocess.pipeline";
-import { createShade } from "./pipelines/shade.pipeline";
-import { createG, createGNorm } from "./pipelines/g.pipeline";
-import { createSky } from "./pipelines/sky.pipeline";
-import { createSSAO } from "./pipelines/ssao.pipeline";
+import { Game } from "../state";
+import { Limits } from "../limits";
 import { createModules } from "./shaders";
+import { createPipelines } from "./pipelines";
 import { ViewportTexture } from "./textures/viewport";
 import { ShadowMapTexture } from "./textures";
-import { Limits } from "../limits";
-import { createShadow } from "./pipelines/shadow.pipeline";
+import { createBindGroupLayouts } from "./bindGroupLayouts";
+import { ViewportPingPongTexture } from "./textures/viewportPingPong";
 
 export class WebGpu {
     private ro: ResizeObserver;
@@ -23,6 +19,7 @@ export class WebGpu {
         depth: new ViewportTexture("depth24plus", 1, "g-depth"),
         ssao: new ViewportTexture("r8unorm", 1, "ssao"),
         shaded: new ViewportTexture("rgba16float", 1, "shaded"),
+        bloom: new ViewportPingPongTexture("rgba16float", 1, "bloom"),
     };
 
     public shadowmaps = new ShadowMapTexture(
@@ -37,15 +34,7 @@ export class WebGpu {
     public pFormat = navigator.gpu.getPreferredCanvasFormat();
     public shaderModules = createModules(this);
     public bindGroupLayouts = createBindGroupLayouts(this);
-    public pipelines = {
-        g: createG(this),
-        gNorm: createGNorm(this),
-        shadow: createShadow(this),
-        post: createPostProcess(this),
-        ssao: createSSAO(this),
-        shade: createShade(this),
-        sky: createSky(this),
-    };
+    public pipelines = createPipelines(this);
 
     public wasResized = false;
 

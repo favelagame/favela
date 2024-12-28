@@ -69,6 +69,10 @@ export class PostprocessPass implements IPass {
                     binding: 3,
                     resource: Game.gpu.textures.ssao.view,
                 },
+                {
+                    binding: 4,
+                    resource: Game.gpu.textures.bloom.views[0],
+                },
             ],
         });
     }
@@ -98,7 +102,7 @@ export class PostprocessPass implements IPass {
                     clearValue: [1, 0, 1, 1],
                 },
             ],
-            timestampWrites: Game.gpu.timestamp("main"),
+            timestampWrites: Game.gpu.timestamp("post"),
         });
 
         post.setPipeline(Game.gpu.pipelines.post);

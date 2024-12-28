@@ -25,6 +25,7 @@ const bigTri = array(
 @group(0) @binding(1) var shaded: texture_2d<f32>;
 @group(0) @binding(2) var depth: texture_depth_2d;
 @group(0) @binding(3) var ssao: texture_2d<f32>;
+@group(0) @binding(4) var bloom: texture_2d<f32>;
 
 @vertex
 fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
@@ -47,23 +48,6 @@ fn getWorldDepth(depthValue: f32, p: vec2u) -> f32 {
     return length(viewPos.xyz) / 10.0;
 }
 
-// @fragment
-// fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
-//     let p = vec2<u32>(fragCoord.xy);
-
-//     if post.mode == 0 { // Shade + SSAO + Post
-//         let depthValue = textureLoad(depth, p, 0);
-//         let d = getWorldDepth(depthValue, p);
-//         let o = textureLoad(ssao, p, 0).x;
-//         let shade = textureLoad(shaded, p, 0);
-//         let fogD = clamp(d - post.fogStart, 0, post.fogEnd - post.fogStart);
-//         let fogFactor = min(fogD * post.fogDensity, 1);
-
-//         return vec4f((shade.xyz * pow(o, post.occlusionPower)) * (1 - fogFactor) + post.fogColor * fogFactor, 1.0);
-//     } else { // Shade only 
-//         return vec4f(textureLoad(shaded, p, 0).xyz, 1.0);
-//     }
-// }
 
 fn reinhardToneMap(color: vec3f, exposure: f32) -> vec3f {
     return color * exposure / (color * exposure + vec3f(1.0));
@@ -77,12 +61,12 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
         let depthValue = textureLoad(depth, p, 0);
         let d = getWorldDepth(depthValue, p);
         let o = textureLoad(ssao, p, 0).x;
-        let shade = textureLoad(shaded, p, 0);
+        let shaded = textureLoad(shaded, p, 0) + textureLoad(bloom, p, 0);
 
         let fogD = clamp(d - post.fogStart, 0.0, post.fogEnd - post.fogStart);
         let fogFactor = min(fogD * post.fogDensity, 1.0);
 
-        let shadedColor = (shade.xyz * pow(o, post.occlusionPower)) * (1.0 - fogFactor) + post.fogColor * fogFactor;
+        let shadedColor = (shaded.xyz * pow(o, post.occlusionPower)) * (1.0 - fogFactor) + post.fogColor * fogFactor;
 
         let toneMappedColor = reinhardToneMap(shadedColor, post.exposure);
 

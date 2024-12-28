@@ -194,7 +194,7 @@ export class Material {
                     binding: 5,
                     resource: this.emission!.texture.createView({
                         label: `${label}:emission`,
-                        format: "rgba8unorm-srgb",
+                        format: "rgba8unorm",
                     }),
                 },
                 { binding: 6, resource: this.emission!.sampler },

@@ -19,6 +19,7 @@ import { ShadePass } from "./honda/gpu/passes/shade.pass";
 import { SkyPass } from "./honda/gpu/passes/sky";
 import { GBufferPass } from "./honda/gpu/passes/gbuf/gbuf.pass";
 import { ShadowMapPass } from "./honda/gpu/passes/shadow.pass";
+import { BloomPass } from "./honda/gpu/passes/bloom.pass";
 
 const canvas = document.querySelector("canvas")!;
 try {
@@ -45,6 +46,7 @@ const passes = [
     new ShadowMapPass(),
     new ShadePass(),
     new PostprocessPass(),
+    new BloomPass(),
     new SkyPass(extras.skyTex),
 ];
 

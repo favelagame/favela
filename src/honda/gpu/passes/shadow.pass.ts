@@ -44,7 +44,7 @@ export class ShadowMapPass implements IPass {
                     depthLoadOp: "clear",
                     depthStoreOp: "store",
                 },
-                timestampWrites: Game.gpu.timestamp(`shadowmap${i}`),
+                timestampWrites: Game.gpu.timestamp(`shadowmaps`),
             });
 
             rp.setPipeline(Game.gpu.pipelines.shadow);
