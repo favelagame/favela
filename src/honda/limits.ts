@@ -9,5 +9,5 @@ export const Limits = {
     MAX_MESH_INSTANCES: 4096,
 
     // maximum  number of timestamped passes
-    MAX_GPU_TIMESTAMPS: 16,
+    MAX_GPU_TIMESTAMPS: 32,
 };

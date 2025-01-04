@@ -5,6 +5,7 @@ import type { Input } from "./input";
 import type { ECS } from "./ecs";
 import { Perf } from "./util/perf";
 import GUI from "muigui";
+import { Flags } from "./flags";
 
 export const Game = {
     ecs: null! as ECS,
@@ -16,6 +17,8 @@ export const Game = {
     input: null! as Input,
     perf: new Perf(),
     gui: new GUI(),
+
+    flags: new Set(window.location.hash.substring(1).split(",") as Flags[]),
 };
 
 //@ts-expect-error expose state to the console

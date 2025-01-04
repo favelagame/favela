@@ -46,11 +46,13 @@ const L_POINT = 0u;
 const L_DIR = 1u;
 const L_SPOT = 2u; 
 
+const PI: f32 = 3.14159265358979323846264338327950288;
+
 fn getScreenCoord(fragCoord: vec4f) -> vec2<f32> {
     return fragCoord.xy / vec2f(textureDimensions(gBase).xy);
 }
 
-fn reconstructPosition(screenCoord: vec2<f32>, depth: f32, invProj: mat4x4<f32>) -> vec3<f32> {
+fn reconstructPosition(screenCoord: vec2<f32>, depth: f32, invProj: mat4x4<f32>) -> vec3f {
     let clipSpace = vec4<f32>(
         screenCoord.x * 2.0 - 1.0,
         1.0 - screenCoord.y * 2.0,
@@ -60,6 +62,64 @@ fn reconstructPosition(screenCoord: vec2<f32>, depth: f32, invProj: mat4x4<f32>)
     let viewSpace = invProj * clipSpace;
     return viewSpace.xyz / viewSpace.w;
 }
+
+fn schlick_fresnel(f0: vec3f, cos_theta: f32) -> vec3f {
+    return f0 + (1.0 - f0) * pow(1.0 - cos_theta, 5.0);
+}
+
+fn ggx_distribution(ndh: f32, roughness: f32) -> f32 {
+    let alpha = roughness * roughness;
+    let alpha2 = alpha * alpha;
+    let ndh2 = ndh * ndh;
+    let denom = ndh2 * (alpha2 - 1.0) + 1.0;
+    return alpha2 / (PI * denom * denom);
+}
+
+fn geometry_schlick_ggx(ndv: f32, roughness: f32) -> f32 {
+    let k = (roughness + 1.0) * (roughness + 1.0) / 8.0;
+    return ndv / (ndv * (1.0 - k) + k);
+}
+
+fn geometry_smith(ndv: f32, ndl: f32, roughness: f32) -> f32 {
+    let ggx_v = geometry_schlick_ggx(ndv, roughness);
+    let ggx_l = geometry_schlick_ggx(ndl, roughness);
+    return ggx_v * ggx_l;
+}
+
+fn brdf_metallic_roughness(
+    normal: vec3f,
+    view_dir: vec3f,
+    light_dir: vec3f,
+    base_color: vec3f,
+    metallic: f32,
+    roughness: f32
+) -> vec3f {
+    let halfway_dir = normalize(view_dir + light_dir);
+
+    // Dot products
+    let ndl = max(dot(normal, light_dir), 0.0);
+    let ndv = max(dot(normal, view_dir), 0.0);
+    let ndh = max(dot(normal, halfway_dir), 0.0);
+    let vdh = max(dot(view_dir, halfway_dir), 0.0);
+
+    // Fresnel term
+    let f0 = mix(vec3f(0.04), base_color, metallic);
+    let fresnel = schlick_fresnel(f0, vdh);
+
+    // Microfacet specular term
+    let d = ggx_distribution(ndh, roughness);
+    let g = geometry_smith(ndv, ndl, roughness);
+    let specular = fresnel * (d * g / (4.0 * ndv * ndl + 0.001));
+
+    // Diffuse term (Lambertian)
+    let diffuse_color = base_color * (1.0 - metallic);
+    let diffuse = diffuse_color / PI;
+
+    // Combine terms
+    return (diffuse + specular) * ndl;
+}
+
+
 
 @vertex
 fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
@@ -81,28 +141,30 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
     );
 
     let bas = textureLoad(gBase, fc, 0).rgb;
-    let nor = normalize(textureLoad(gNorm, fc, 0).rgb * 2.0 - 1.0);
+    let N = normalize(textureLoad(gNorm, fc, 0).rgb * 2.0 - 1.0);
     let metRgh = textureLoad(gMetRgh, fc, 0).rg;
+    let met = metRgh.r;
+    let rgh = metRgh.g;
     let ems = textureLoad(gEms, fc, 0).rgb;
+    let V = normalize(uni.VPInv[3].xyz - pos);
 
     var lit = vec3f(0.0);
 
     // fries in bag
     for (var i = 0u; i < uni.nLights; i++) {
         var atten = 1.0;
-        var lightDir = vec3f(0.0);
+        var L = vec3f(0.0);
         var light = lights[i];
 
         if light.ltype == L_DIR {
             // call me a directional light the way I don't fall off
-            lightDir = normalize(-light.direction);
+            L = normalize(-light.direction);
         } else {
             let delta = light.position - pos;
-            lightDir = normalize(delta);
+            L = normalize(delta);
             let dist = length(delta);
-            // if dist > light.maxRange {
-            //     continue;
-            // }
+            //TODO(mbabnik): uniformity BS
+            // if dist > light.maxRange { continue; }
             atten = 1.0 / max(pow(dist, 2), 0.0001);
         }
 
@@ -113,7 +175,7 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
 
             atten *= clamp(
                 (dot(
-                    lightDir,
+                    L,
                     normalize(-light.direction)
                 ) - coneO) / (coneI - coneO),
                 0.0,
@@ -131,20 +193,31 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
                 shadowSampler,
                 texCoords,
                 light.shadowMap,
-                ndc.z - 0.000001
+                ndc.z - 0.000002
             );
         }
 
+
         // Diffuse
-        let NdotL = max(dot(nor, lightDir), 0.0);
-        let dif = bas * light.color * atten * NdotL * (light.intensity);
+        if false {
+            let NdotL = max(dot(N, L), 0.0);
+            let dif = bas * light.color * atten * NdotL * (light.intensity);
+            //TODO: Specular
 
-        //TODO: Specular
-
-        lit += dif;
+            lit += dif;
+        } else {
+            lit += light.color * atten * light.intensity * 0.1 * brdf_metallic_roughness(
+                N,
+                V,
+                L,
+                bas,
+                met,
+                rgh
+            );
+        }
     }
-    lit /= 50.0;
-    lit += bas * 0.5; // very lazy ambient impl
+    // lit /= 50.0;
+    lit += bas; // very lazy ambient impl
 
     return vec4f(lit + ems, 1.0);
 }

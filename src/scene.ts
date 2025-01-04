@@ -114,6 +114,22 @@ class FlyCameraScript extends HondaBehavior {
     }
 }
 
+@EcsInjectable()
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+class MovingLightScript extends HondaBehavior {
+    constructor(
+        protected eid: number,
+        protected transform: TransformComponent
+    ) {
+        super();
+    }
+
+    onUpdate(): void {
+        // this.transform.translation[0] = 2 * Math.sin(Game.time / 1000);
+        quat.fromEuler(0, Game.time / 150, 0, "xyz", this.transform.rotation);
+    }
+}
+
 export async function setupScene(ecs: ECS) {
     setStatus("loading assets");
 
@@ -130,28 +146,33 @@ export async function setupScene(ecs: ECS) {
         { mips: true }
     );
 
-    const sponza = await GltfBinary.fromUrl("Sponza5.glb");
+    // const sponza = await GltfBinary.fromUrl("Sponza5.glb");
+    const sponza = await GltfBinary.fromUrl("MetalRoughSpheres.glb");
     // const sponza = await GltfBinary.fromUrl("shadowtest.glb");
-
-    // {
-    //     const l1 = ecs.addEntity();
-    //     ecs.addComponent(l1, new TransformComponent(vec3.create(2, 2, 2)));
-    //     ecs.addComponent(
-    //         l1,
-    //         new LightComponent({
-    //             type: "point",
-    //             maxRange: 1000,
-    //             color: [1, 0, 0],
-    //             intensity: 1,
-    //         })
-    //     );
-    // }
 
     {
         const camera = ecs.addEntity();
         ecs.addComponent(camera, new TransformComponent(vec3.create(0, 1, 5)));
         ecs.addComponent(camera, new CameraComponent(70, 0.01, 100));
         ecs.addComponent(camera, new ScriptComponent(FlyCameraScript));
+    }
+
+    {
+        const fll = ecs.addEntity();
+        ecs.addComponent(fll, new TransformComponent(vec3.create(0, 5, 0)));
+        ecs.addComponent(
+            fll,
+            new LightComponent({
+                type: "spot",
+                castShadows: true,
+                color: [1, 0, 0],
+                intensity: 10000,
+                maxRange: 1000,
+                innerCone: 0.7,
+                outerCone: 1.0,
+            })
+        );
+        ecs.addComponent(fll, new ScriptComponent(MovingLightScript));
     }
 
     console.time("wastingTimeUploadingToGPU");
