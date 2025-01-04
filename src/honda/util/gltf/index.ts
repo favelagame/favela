@@ -408,7 +408,7 @@ export class GltfBinary {
     protected getImage(imageIdx: number) {
         return nn(
             this.imageCache[imageIdx],
-            "image OOB,  did you forget to call prepareImages()"
+            "image OOB, did you forget to call prepareImages()"
         );
     }
 
@@ -515,7 +515,7 @@ export class GltfBinary {
         const texture = Game.gpu.device.createTexture({
             //TODO(mbabnik): Grab a label
             format: "rgba8unorm",
-            viewFormats : [ 'rgba8unorm', 'rgba8unorm-srgb' ], // ummm
+            viewFormats : [ 'rgba8unorm', 'rgba8unorm-srgb' ],
             size: [image.width, image.height],
             usage:
                 GPUTextureUsage.TEXTURE_BINDING |

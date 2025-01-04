@@ -29,7 +29,7 @@ export class PostprocessPass implements IPass {
         exposure: 1,
         gamma: 2.2,
 
-        bloom: 0.04
+        bloom: 0.07
     };
 
     constructor() {

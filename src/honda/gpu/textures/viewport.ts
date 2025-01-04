@@ -12,7 +12,10 @@ export class ViewportTexture<Tformat extends GPUTextureFormat> {
         this.tex?.destroy();
         this.tex = dev.createTexture({
             format: this.format,
-            size: [viewportW, viewportH],
+            size: [
+                ~~(viewportW * this.renderScale),
+                ~~(viewportH * this.renderScale),
+            ],
             usage:
                 GPUTextureUsage.RENDER_ATTACHMENT |
                 GPUTextureUsage.TEXTURE_BINDING,

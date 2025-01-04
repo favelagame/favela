@@ -12,7 +12,11 @@ export class ViewportPingPongTexture<Tformat extends GPUTextureFormat> {
         this.tex?.destroy();
         this.tex = dev.createTexture({
             format: this.format,
-            size: [viewportW, viewportH, 2],
+            size: [
+                ~~(viewportW * this.renderScale),
+                ~~(viewportH * this.renderScale),
+                2,
+            ],
             usage:
                 GPUTextureUsage.RENDER_ATTACHMENT |
                 GPUTextureUsage.TEXTURE_BINDING,
@@ -24,13 +28,13 @@ export class ViewportPingPongTexture<Tformat extends GPUTextureFormat> {
             this.tex.createView({
                 baseArrayLayer: 0,
                 arrayLayerCount: 1,
-                dimension: '2d',
+                dimension: "2d",
                 label: `${this.label}:A`,
             }),
             this.tex.createView({
                 baseArrayLayer: 1,
                 arrayLayerCount: 1,
-                dimension: '2d',
+                dimension: "2d",
                 label: `${this.label}:B`,
             }),
         ];

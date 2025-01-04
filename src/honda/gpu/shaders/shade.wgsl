@@ -100,6 +100,8 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
             let delta = light.position - pos;
             lightDir = normalize(delta);
             let dist = length(delta);
+            // TODO(mbabnik): this fails uniformity analysis
+            // switch to sampling and pass screenspace coords from vert shader  
             // if dist > light.maxRange {
             //     continue;
             // }
