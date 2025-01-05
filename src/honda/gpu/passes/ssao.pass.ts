@@ -123,7 +123,7 @@ export class SSAOPass implements IPass {
         p.add(this.guiSettings, "radius", 0, 1);
         p.add(this.guiSettings, "bias", 0.0001, 0.1);
 
-        this.disable = window.location.hash.includes("noSSAO");
+        this.disable = Game.flags.has("noSSAO");
     }
 
     apply() {
