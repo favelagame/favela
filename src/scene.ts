@@ -146,8 +146,8 @@ export async function setupScene(ecs: ECS) {
         { mips: true }
     );
 
-    // const sponza = await GltfBinary.fromUrl("Sponza5.glb");
-    const sponza = await GltfBinary.fromUrl("MetalRoughSpheres.glb");
+    const sponza = await GltfBinary.fromUrl("Sponza5.glb");
+    // const sponza = await GltfBinary.fromUrl("MetalRoughSpheres.glb");
     // const sponza = await GltfBinary.fromUrl("shadowtest.glb");
 
     {

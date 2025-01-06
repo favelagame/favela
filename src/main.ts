@@ -44,10 +44,10 @@ const passes = [
     new GBufferPass(),
     new SSAOPass(),
     new ShadowMapPass(),
-    new ShadePass(),
-    new PostprocessPass(),
-    new BloomPass(),
     new SkyPass(extras.skyTex),
+    new ShadePass(),
+    new BloomPass(),
+    new PostprocessPass(),
 ];
 
 setStatus(undefined);

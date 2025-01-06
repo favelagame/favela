@@ -17,7 +17,7 @@ export class WebGpu {
         mtlRgh: new ViewportTexture("rg8unorm", 1, "g-metal-rough"),
         emission: new ViewportTexture("rgba8unorm", 1, "g-emission"),
         depth: new ViewportTexture("depth24plus", 1, "g-depth"),
-        ssao: new ViewportTexture("r8unorm", 0.5, "ssao"),
+        ssao: new ViewportTexture("r8unorm", 1, "ssao"),
         shaded: new ViewportTexture("rgba16float", 1, "shaded"),
         bloom: new ViewportPingPongTexture("rgba16float", 1, "bloom"),
     };
