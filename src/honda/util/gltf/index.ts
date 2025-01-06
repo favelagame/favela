@@ -12,6 +12,7 @@ import {
     ISpotLight,
     THondaLight,
 } from "@/honda/systems/light/lights.interface";
+import { SceneNode } from "@/honda/siweetoo/scene";
 
 export type TTypedArrayCtor<T> = {
     new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
@@ -330,6 +331,9 @@ export class GltfBinary {
         return b;
     }
 
+    /**
+     * @deprecated
+     */
     protected getMeshPrimitive(index: number) {
         const gMesh = nn(this.json.meshes?.[index], "mesh OOB");
 
@@ -412,9 +416,10 @@ export class GltfBinary {
         );
     }
 
-    protected getMeshNoCache(index: number): Mesh {
-        const name = this.json.meshes?.[index]?.name ?? "<unknown>";
-        const gPrimitive = this.getMeshPrimitive(index);
+    protected getMeshNoCache(mesh: number, primitive: number): Mesh {
+        const gm = nn(this.json.meshes?.[mesh]);
+        const gPrimitive = gm.primitives[primitive];
+        const name = `mp:${gm.name ?? mesh}.p${primitive}`;
 
         const position = nn(
                 gPrimitive.attributes["POSITION"],
@@ -503,9 +508,10 @@ export class GltfBinary {
         );
     }
 
-    public getMesh(index: number) {
-        return GltfBinary.cacheOr(this.meshCache, index, () =>
-            this.getMeshNoCache(index)
+    public getMeshP(mesh: number, primitive: number) {
+        //FIXME(mbabnik): fix caching bullshit
+        return GltfBinary.cacheOr(this.meshCache, (mesh << 4) | primitive, () =>
+            this.getMeshNoCache(mesh, primitive)
         );
     }
 
@@ -515,7 +521,7 @@ export class GltfBinary {
         const texture = Game.gpu.device.createTexture({
             //TODO(mbabnik): Grab a label
             format: "rgba8unorm",
-            viewFormats : [ 'rgba8unorm', 'rgba8unorm-srgb' ],
+            viewFormats: ["rgba8unorm", "rgba8unorm-srgb"],
             size: [image.width, image.height],
             usage:
                 GPUTextureUsage.TEXTURE_BINDING |
@@ -541,10 +547,8 @@ export class GltfBinary {
         );
     }
 
-    protected getMeshMaterialNoCache(index: number): Material {
-        const primitive = this.getMeshPrimitive(index);
-        const matIdx = nn(primitive.material, "Primitive has no material");
-        const gMat = nn(this.json.materials?.[matIdx], "Mat IDX OOB");
+    protected getMaterialNoCache(idx: number): Material {
+        const gMat = nn(this.json.materials?.[idx], "Mat IDX OOB");
 
         const pbr = nn(gMat.pbrMetallicRoughness, "Missing PBR component");
 
@@ -621,9 +625,9 @@ export class GltfBinary {
         );
     }
 
-    public getMeshMaterial(index: number): Material {
-        return GltfBinary.cacheOr(this.materialCache, index, () =>
-            this.getMeshMaterialNoCache(index)
+    public getMaterial(idx: number): Material {
+        return GltfBinary.cacheOr(this.materialCache, idx, () =>
+            this.getMaterialNoCache(idx)
         );
     }
 
@@ -647,6 +651,72 @@ export class GltfBinary {
         return nn(this.json.scenes?.[arg], "Scene idx OOB");
     }
 
+    public loadMeshToNode(node: SceneNode, idx: number) {
+        const gMesh = nn(this.json.meshes?.[idx]);
+
+        gMesh.primitives.forEach((p, i) => {
+            const mp = this.getMeshP(idx, i);
+            const mm = this.getMaterial(nn(p.material, "no material!"));
+
+            node.addComponent({
+                type: "mesh",
+                name: `mesh:${idx}-${i}`,
+                mp,
+                mm,
+            });
+        });
+    }
+
+    public nodeConvert(index: number) {
+        const gNode = nn(this.json.nodes?.[index]);
+        const node = new SceneNode();
+        node.name = gNode.name ?? `${this.name}.nodes.${index}`;
+
+        if (gNode.matrix) console.warn("glTF Matrices unsupported");
+
+        // transform
+        if (gNode.translation) {
+            node.transform.translation.set(gNode.translation);
+        }
+        if (gNode.rotation) {
+            node.transform.rotation.set(gNode.rotation);
+        }
+        if (gNode.scale) {
+            node.transform.scale.set(gNode.scale);
+        }
+        node.transform.update();
+
+        // meshes
+        if (typeof gNode.mesh === "number") {
+            this.loadMeshToNode(node, gNode.mesh);
+        }
+
+        // light
+        if (typeof gNode.extensions?.KHR_lights_punctual?.light === "number") {
+            node.addComponent({
+                name: `l:${gNode.extensions?.KHR_lights_punctual?.light}`,
+                light: this.getLight(
+                    gNode.extensions?.KHR_lights_punctual?.light
+                ),
+            });
+        }
+
+        // children
+        gNode.children?.forEach((c) => node.addChild(this.nodeConvert(c)));
+
+        return node;
+    }
+
+    public sceneAsNode(index = 0): SceneNode {
+        const scene = nn(this.json.scenes?.[index], "Scene idx OOB");
+        const node = new SceneNode();
+        node.name = scene.name ?? `${this.name}.scenes.${index}`;
+
+        scene.nodes?.forEach((n) => node.addChild(this.nodeConvert(n)));
+
+        return node;
+    }
+
     public getLight(id: number): THondaLight {
         const gLight = nn(
             this.json.extensions?.KHR_lights_punctual?.lights[id],
@@ -654,9 +724,9 @@ export class GltfBinary {
         );
 
         const color = gLight.color ?? [1, 1, 1],
-                intensity = gLight.intensity ?? 1,
-                maxRange = gLight.range ?? 100000,
-                castShadows = !(gLight.extras?.['_noshadow']);
+            intensity = gLight.intensity ?? 1,
+            maxRange = gLight.range ?? 100000,
+            castShadows = !gLight.extras?.["_noshadow"];
 
         switch (gLight.type) {
             case "spot":

@@ -107,7 +107,9 @@ export function perfRenderer(
     return () => {
         fps.innerText = Game.perf.fps.toFixed(1).padStart(5, " ");
         mspf.innerText = Game.perf.frametime.toFixed(2).padStart(6, " ");
-        ents.innerText = Game.ecs.entityCount.toString().padStart(4, " ");
+        ents.innerText = (Game.ecs?.entityCount ?? -1)
+            .toString()
+            .padStart(4, " ");
 
         const m = Game.perf.measured();
         cpu.innerText = m
