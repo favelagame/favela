@@ -1,4 +1,4 @@
-import { Game } from "@/honda/core";
+import { Game } from "@/honda";
 import { IPass } from "./pass.interface";
 import { makeStructuredView } from "webgpu-utils";
 import { BlurPass } from "./blur.pass";
@@ -10,16 +10,18 @@ export class BloomPass implements IPass {
 
     protected settingsGpuBuffer: GPUBuffer;
     protected bindGroup!: GPUBindGroup;
-    
+
     protected blur: BlurPass;
 
     protected guiSettings = {
         threshold: 1,
+        knee: 1,
     };
 
     constructor() {
         const p = Game.gui.addFolder("Bloom");
-        p.add(this.guiSettings, "threshold", 0.5, 10);
+        p.add(this.guiSettings, "threshold", 1, 32);
+        p.add(this.guiSettings, "knee", 1, 32);
 
         this.settingsGpuBuffer = Game.gpu.device.createBuffer({
             size: this.settings.arrayBuffer.byteLength,
@@ -30,7 +32,7 @@ export class BloomPass implements IPass {
             Game.gpu.textures.bloom,
             Game.gpu.pipelines.blurRgbaF16,
             4, //9x9
-            'blur-bloom'
+            "blur-bloom"
         );
     }
 

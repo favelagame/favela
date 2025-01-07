@@ -198,23 +198,16 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
         }
 
 
-        // Diffuse
-        if false {
-            let NdotL = max(dot(N, L), 0.0);
-            let dif = bas * light.color * atten * NdotL * (light.intensity);
-            //TODO: Specular
 
-            lit += dif;
-        } else {
-            lit += light.color * atten * light.intensity * 0.1 * brdf_metallic_roughness(
-                N,
-                V,
-                L,
-                bas,
-                met,
-                rgh
-            );
-        }
+        lit += max(vec3(0.0),
+            light.color * atten * light.intensity * 0.1 * brdf_metallic_roughness(
+            N,
+            V,
+            L,
+            bas,
+            met,
+            rgh
+        ));
     }
     // lit /= 50.0;
     lit += bas; // very lazy ambient impl

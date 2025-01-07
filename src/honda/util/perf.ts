@@ -9,6 +9,7 @@ export class Perf {
     protected frameToFrameTimes = [...Array(Perf.N)].map(() => 0);
 
     protected activeLabel: string | undefined;
+    protected framesSinceLastLabel = 0;
     protected labelTimes = {} as Record<string, number>;
     protected labelStart = 0;
 
@@ -29,6 +30,7 @@ export class Perf {
         if (this.activeLabel) this.measureEnd();
         this.frameTimes[this.frameIndex++] =
             performance.now() - this.frameStart;
+        this.framesSinceLastLabel++;
         if (this.frameIndex == Perf.N) this.frameIndex = 0;
     }
 
@@ -59,12 +61,16 @@ export class Perf {
 
     /**
      * collects all measured times, grouped by label (and clears them)
-     * @returns
      */
     public measured() {
         const ts = Object.entries(this.labelTimes).sort((a, b) => b[1] - a[1]);
         for (const key in this.labelTimes) {
             this.labelTimes[key] = 0;
+        }
+
+        if (this.framesSinceLastLabel > 0) {
+            ts.forEach((x) => (x[1] /= this.framesSinceLastLabel));
+            this.framesSinceLastLabel = 0;
         }
 
         return ts;
@@ -107,9 +113,7 @@ export function perfRenderer(
     return () => {
         fps.innerText = Game.perf.fps.toFixed(1).padStart(5, " ");
         mspf.innerText = Game.perf.frametime.toFixed(2).padStart(6, " ");
-        ents.innerText = (Game.ecs?.entityCount ?? -1)
-            .toString()
-            .padStart(4, " ");
+        ents.innerText = (-1).toString().padStart(4, " ");
 
         const m = Game.perf.measured();
         cpu.innerText = m

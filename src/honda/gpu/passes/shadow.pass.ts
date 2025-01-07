@@ -1,6 +1,7 @@
 import { Game } from "@/honda/state";
 import { IPass } from "./pass.interface";
-import { LightSystem, MeshSystem } from "@/honda/core";
+import { LightSystem } from "@/honda/systems/light";
+import { MeshSystem } from "@/honda/systems/mesh";
 
 export class ShadowMapPass implements IPass {
     private mtxBindGroup: GPUBindGroup;

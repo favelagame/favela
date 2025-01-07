@@ -1,7 +1,7 @@
-import { CameraSystem } from "../../core";
 import { Game } from "../../state";
 import { makeStructuredView } from "webgpu-utils";
 import { IPass } from "./pass.interface";
+import { CameraSystem } from "@/honda/systems/camera";
 
 function mode() {
     const map = Game.input.btnMap;
@@ -90,7 +90,7 @@ export class PostprocessPass implements IPass {
             mode: mode(),
 
             inverseProjection: csys.activeCamera.projMtxInv,
-            camera: csys.activeCameraTransfrom.invMatrix,
+            camera: csys.viewMtx,
 
             ...this.guiSettings,
         });

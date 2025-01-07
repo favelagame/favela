@@ -1,7 +1,8 @@
+import { IComponent } from "@/honda/core/ecs";
 import { Game } from "@/honda/state";
 import { mat4 } from "wgpu-matrix";
 
-export class CameraComponent {
+export class CameraComponent implements IComponent {
     public active = true;
 
     protected projectionMtx = mat4.create();
@@ -12,7 +13,8 @@ export class CameraComponent {
     public constructor(
         protected _fov: number,
         protected _near: number,
-        protected _far: number
+        protected _far: number,
+        public name = "Camera"
     ) {
         this.recompute();
     }
@@ -63,12 +65,16 @@ export class CameraComponent {
     }
 
     public get projMtx() {
-        if (Game.gpu.aspectRatio != this.currentAspect || this.dirty) this.recompute();
+        if (Game.gpu.aspectRatio != this.currentAspect || this.dirty) {
+            this.recompute();
+        }
         return this.projectionMtx;
     }
 
     public get projMtxInv() {
-        if (Game.gpu.aspectRatio != this.currentAspect || this.dirty) this.recompute();
+        if (Game.gpu.aspectRatio != this.currentAspect || this.dirty) {
+            this.recompute();
+        }
         return this.invProjectionMtx;
     }
 }

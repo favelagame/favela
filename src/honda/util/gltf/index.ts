@@ -11,8 +11,10 @@ import {
     IPointLight,
     ISpotLight,
     THondaLight,
-} from "@/honda/systems/light/lights.interface";
-import { SceneNode } from "@/honda/siweetoo/scene";
+} from "@/honda/systems/light";
+import { SceneNode } from "@/honda/core/scene";
+import { MeshComponent } from "@/honda/systems/mesh";
+import { LightComponent } from "@/honda/systems/light";
 
 export type TTypedArrayCtor<T> = {
     new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
@@ -102,14 +104,21 @@ export class GltfBinary {
     }
 
     public static async fromUrl(url: string) {
+        const start = performance.now();
         console.time(url);
         const f = await fetch(url);
         const buf = await f.arrayBuffer();
 
         const gltf = new GltfBinary(buf, url);
         await gltf.prepareImages();
-        console.timeEnd(url);
-        console.table({ assetUrl: url, ...gltf.json.asset });
+        console.log(`[GltfBinary] Loaded ${url} in ${(
+            performance.now() - start
+        ).toFixed(1)}ms
+                Version: ${gltf.json.asset.version}
+                Generator: ${gltf.json.asset.generator ?? "unknown"}
+                Copyright: ${gltf.json.asset.copyright ?? "unknown"}
+                Extensions: ${gltf.json.extensionsUsed?.join(",") ?? ""}
+                `);
         return gltf;
     }
 
@@ -657,13 +666,7 @@ export class GltfBinary {
         gMesh.primitives.forEach((p, i) => {
             const mp = this.getMeshP(idx, i);
             const mm = this.getMaterial(nn(p.material, "no material!"));
-
-            node.addComponent({
-                type: "mesh",
-                name: `mesh:${idx}-${i}`,
-                mp,
-                mm,
-            });
+            node.addComponent(new MeshComponent(mp, mm, `mesh:${idx}-${i}`));
         });
     }
 
@@ -692,13 +695,15 @@ export class GltfBinary {
         }
 
         // light
-        if (typeof gNode.extensions?.KHR_lights_punctual?.light === "number") {
-            node.addComponent({
-                name: `l:${gNode.extensions?.KHR_lights_punctual?.light}`,
-                light: this.getLight(
-                    gNode.extensions?.KHR_lights_punctual?.light
-                ),
-            });
+        const lightId = gNode.extensions?.KHR_lights_punctual?.light;
+        if (typeof lightId === "number") {
+            node.addComponent(
+                new LightComponent(
+                    this.getLight(lightId),
+                    this.json.extensions?.KHR_lights_punctual?.lights[lightId]
+                        ?.name ?? `Light${lightId}`
+                )
+            );
         }
 
         // children

@@ -1,9 +1,7 @@
-import { Entity, System } from "@/honda/ecs";
-import { TransformComponent } from "../transform";
+import { SceneNode } from "@/honda/core/scene";
+import { System } from "../../core/ecs";
 import { MeshComponent } from "./mesh.component";
-import { Game } from "@/honda/state";
-import { Material } from "@/honda/gpu/material/material";
-import { Mesh } from "@/honda/gpu/meshes/mesh";
+import { Game, Material, Mesh } from "@/honda";
 
 interface IDrawCall {
     mat: Material;
@@ -14,8 +12,8 @@ interface IDrawCall {
 }
 
 export class MeshSystem extends System {
+    public componentType = MeshComponent;
     protected instances: Float32Array;
-
     public instanceBuffer: GPUBuffer;
     public calls = [] as IDrawCall[];
 
@@ -29,24 +27,29 @@ export class MeshSystem extends System {
         });
     }
 
-    public componentsRequired = new Set([TransformComponent, MeshComponent]);
+    protected components = new Map<MeshComponent, SceneNode>();
 
-    public update(entities: Set<Entity>): void {
-        const sortedEntities = Array.from(entities)
-            .map((entity) => {
-                const comp = this.ecs.getComponents(entity);
-                return {
-                    entity,
-                    mc: comp.get(MeshComponent),
-                    tc: comp.get(TransformComponent),
-                };
-            })
-            .sort((a, b) => {
-                const dmt = a.mc.material.type - b.mc.material.type;
+    public componentCreated(node: SceneNode, comp: MeshComponent) {
+        if (this.components.delete(comp)) {
+            console.warn("moved component to new node", comp, node);
+        }
+        this.components.set(comp, node);
+    }
+
+    public componentDestroyed(_: SceneNode, comp: MeshComponent) {
+        this.components.delete(comp);
+    }
+
+    public lateUpdate(): void {
+        const sortedEntities = this.components
+            .entries()
+            .toArray()
+            .sort(([a], [b]) => {
+                const dmt = a.material.type - b.material.type;
                 if (dmt !== 0) return dmt;
-                const dmid = a.mc.material.id - b.mc.material.id;
+                const dmid = a.material.id - b.material.id;
                 if (dmid !== 0) return dmid;
-                return a.mc.mesh.id - b.mc.mesh.id;
+                return a.primitive.id - b.primitive.id;
             });
 
         this.calls = [];
@@ -56,19 +59,19 @@ export class MeshSystem extends System {
             previousMesh: Mesh = null!,
             previousMat: Material = null!;
 
-        for (const ent of sortedEntities) {
-            const mat = ent.mc.material,
-                mesh = ent.mc.mesh;
-
-            this.instances.set(ent.tc.matrix, i * 32);
-            this.instances.set(ent.tc.invMatrix, i * 32 + 16);
+        for (const [
+            { material: mat, primitive: mesh },
+            { transform: tc },
+        ] of sortedEntities) {
+            this.instances.set(tc.$glbMtx, i * 32);
+            this.instances.set(tc.$glbInvMtx, i * 32 + 16);
 
             if (previousMat != mat || previousMesh != mesh) {
                 this.calls.push({
                     firstInstance: i,
                     nInstances: 1,
-                    mat: ent.mc.material,
-                    mesh: ent.mc.mesh,
+                    mat,
+                    mesh,
                 });
                 previousMat = mat;
                 previousMesh = mesh;

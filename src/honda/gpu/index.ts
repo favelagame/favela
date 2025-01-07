@@ -84,11 +84,19 @@ export class WebGpu {
         public readonly canvas: HTMLCanvasElement,
         public readonly ctx: GPUCanvasContext
     ) {
-        console.groupCollapsed("GPU info");
-        console.log("PREFERED FORMAT:", this.pFormat);
+        console.log(
+            "%cFavela/Honda (WebGPU)",
+            "font-family: sans-serif; font-weight: bold; font-size: 2rem; color: #f44; background-color: black; padding: 1rem"
+        );
+        console.log(
+            `%cGPU: %c${adapter.info.description}`,
+            "font-family: sans-serif; font-weight: bold; font-size: 1rem",
+            "font-family: sans-serif; font-size: 1rem"
+        );
+        console.groupCollapsed("GPUInfo");
+        console.log("Prefered fmt:", this.pFormat);
         console.info(adapter.info);
-        console.log("features", device.features);
-        console.info(device.limits);
+        console.table(device.limits);
         console.groupEnd();
 
         this.resizeTextures();

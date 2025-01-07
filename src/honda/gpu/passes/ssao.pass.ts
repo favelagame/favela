@@ -1,8 +1,8 @@
-import { CameraSystem } from "@/honda/core";
 import { Game } from "@/honda/state";
 import { makeStructuredView } from "webgpu-utils";
 import { vec3 } from "wgpu-matrix";
 import { IPass } from "./pass.interface";
+import { CameraSystem } from "@/honda/systems/camera";
 
 function generateSampleHemisphere(nSamples: number) {
     const arr = new Float32Array(nSamples * 4);
@@ -137,7 +137,7 @@ export class SSAOPass implements IPass {
             projection: camera.projMtx,
             inverseProjection: camera.projMtxInv,
             samples: this.ssaoSamples,
-            camera: csys.activeCameraTransfrom.invMatrix,
+            camera: csys.viewMtx,
 
             ...this.guiSettings,
         });

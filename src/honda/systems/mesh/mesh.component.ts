@@ -1,9 +1,10 @@
-import { Component } from "@/honda/ecs";
-import { Material } from "@/honda/gpu/material/material";
-import { Mesh } from "@/honda/gpu/meshes/mesh";
+import { Material, Mesh } from "@/honda";
+import { IComponent } from "@/honda/core/ecs";
 
-export class MeshComponent extends Component {
-    public constructor(public mesh: Mesh, public material: Material) {
-        super();
-    }
+export class MeshComponent implements IComponent {
+    constructor(
+        public primitive: Mesh,
+        public material: Material,
+        public name: string = `unknownMeshComponent`
+    ) {}
 }

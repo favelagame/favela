@@ -1,14 +1,14 @@
 import { Game } from "@/honda/state";
 import { IPass } from "../pass.interface";
 import {
-    CameraSystem,
     Material,
-    MeshSystem,
     NORMALMAP_BIT,
-} from "@/honda/core";
+} from "@/honda";
 import { Mesh } from "../../meshes/mesh";
 import { BIND_MAT, BIND_PASS } from "./gbuf.const";
 import { makeStructuredView, StructuredView } from "webgpu-utils";
+import { MeshSystem } from "@/honda/systems/mesh";
+import { CameraSystem } from "@/honda/systems/camera";
 
 export class GBufferPass implements IPass {
     protected uniformsBuf: GPUBuffer;

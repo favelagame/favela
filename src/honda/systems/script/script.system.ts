@@ -1,34 +1,39 @@
-import { System, Entity, ComponentClass, ECS } from "@/honda/ecs";
+import { SceneNode, System } from "@/honda";
 import { ScriptComponent } from "./script.component";
-import { HondaBehavior } from "./hondaBehavior.class";
+
+interface PrivateScript {
+    _node?: SceneNode;
+}
 
 export class ScriptSystem extends System {
-    public componentsRequired = new Set([ScriptComponent]);
+    public componentType = ScriptComponent;
 
-    public update(entities: Set<Entity>): void {
-        entities.forEach((eid) => {
-            const sc = this.ecs
-                .getComponents(eid)
-                .get(ScriptComponent) as ScriptComponent<HondaBehavior>;
+    protected components = new Map<ScriptComponent, SceneNode>();
 
-            if (!sc.instance) {
-                const ctor = sc.script;
-                const deps = Reflect.getMetadata(
-                    "design:paramtypes",
-                    ctor
-                ) as unknown[];
+    public componentCreated(node: SceneNode, comp: ScriptComponent) {
+        if (this.components.has(comp)) {
+            this.componentDestroyed(node, comp);
+            console.warn("moved component to new node", comp, node);
+        }
+        (comp.script as unknown as PrivateScript)._node = node;
+        this.components.set(comp, node);
+    }
 
-                console.assert(deps[0] === Number, "EID wasnt first", deps);
-                const components = this.ecs.getComponents(eid);
+    public componentDestroyed(_: SceneNode, comp: ScriptComponent) {
+        this.components.delete(comp);
+        comp.script.onDetach();
+        (comp.script as unknown as PrivateScript)._node = undefined;
+    }
 
-                const args = (deps as ComponentClass<never>[])
-                    .slice(1)
-                    .map((x) =>
-                        x == ECS ? (this.ecs as never) : components.get(x)
-                    );
-                sc.instance = new sc.script(eid, ...args);
-            }
-            sc.instance.onUpdate();
-        });
+    public earlyUpdate(): void {
+        this.components.keys().forEach((x) => x.script.earlyUpdate());
+    }
+
+    public update(): void {
+        this.components.keys().forEach((x) => x.script.update());
+    }
+
+    public lateUpdate(): void {
+        this.components.keys().forEach((x) => x.script.lateUpdate());
     }
 }

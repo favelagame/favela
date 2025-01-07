@@ -1,7 +1,8 @@
-import { CameraSystem, LightSystem } from "../../core";
-import { Game } from "../../state";
 import { makeStructuredView } from "webgpu-utils";
 import { IPass } from "./pass.interface";
+import { Game } from "@/honda/state";
+import { CameraSystem } from "@/honda/systems/camera";
+import { LightSystem } from "@/honda/systems/light";
 
 export class ShadePass implements IPass {
     protected settings = makeStructuredView(

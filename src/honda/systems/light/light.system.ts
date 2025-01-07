@@ -1,15 +1,15 @@
-import { Entity, System } from "@/honda/ecs";
-import { TransformComponent } from "../transform";
 import { LightComponent } from "./light.component";
 import { Game } from "@/honda/state";
 import { makeStructuredView } from "webgpu-utils";
-import { mat4, Mat4, quat, Vec3, vec3 } from "wgpu-matrix";
+import { mat4, Mat4, Vec3, vec4 } from "wgpu-matrix";
 import { IPointLight, ISpotLight, THondaLight } from "./lights.interface";
 import { Limits } from "@/honda/limits";
+import { System } from "@/honda/core/ecs";
+import { SceneNode } from "@/honda/core/scene";
 
 interface ILightData {
     position: Vec3;
-    direction: Vec3;
+    direction: [number, number, number];
     color: [number, number, number];
     ltype: number;
     intensity: number;
@@ -29,7 +29,7 @@ const TYPE_MAP: Record<THondaLight["type"], number> = {
 const DIR_RADIUS = 16;
 
 export class LightSystem extends System {
-    public componentsRequired = new Set([TransformComponent, LightComponent]);
+    public componentType = LightComponent;
 
     public lightsBuf: GPUBuffer;
     public shadowmapMatrices: GPUBuffer;
@@ -69,18 +69,29 @@ export class LightSystem extends System {
         });
     }
 
-    public update(entities: Set<Entity>): void {
+    protected components = new Map<LightComponent, SceneNode>();
+
+    public componentCreated(node: SceneNode, comp: LightComponent) {
+        if (this.components.delete(comp)) {
+            console.warn("moved component to new node", comp, node);
+        }
+        this.components.set(comp, node);
+    }
+
+    public componentDestroyed(_: SceneNode, comp: LightComponent) {
+        this.components.delete(comp);
+    }
+
+    public lateUpdate(): void {
         this.nShadowmaps = 0;
 
         const lights: ILightData[] = [];
         //tmp matrices
-        const proj = mat4.create(),
-            view = mat4.create();
+        const proj = mat4.create();
+        const tmp = vec4.create();
 
-        for (const e of entities) {
-            const c = this.ecs.getComponents(e);
-            const l = c.get(LightComponent);
-            const t = c.get(TransformComponent);
+        for (const [l, e] of this.components) {
+            const t = e.transform;
 
             let shadowMap = -1;
             let vp: Mat4 | undefined;
@@ -93,9 +104,6 @@ export class LightSystem extends System {
                     this.matrixAlignedSize * shadowMap,
                     16
                 );
-
-                mat4.fromQuat(quat.inverse(t.rotation), view);
-                mat4.translate(view, vec3.negate(t.translation), view);
 
                 if (l.lightInfo.type == "directional") {
                     //TODO(mbabnik): figure out a better way to setup directional lights
@@ -110,15 +118,22 @@ export class LightSystem extends System {
                     );
                 } else {
                     //TODO(mbabnik): use maxRange or some function of intensity for far plane
-                    mat4.perspective(l.lightInfo.outerCone * 2, 1, 0.0001, 10, proj);
+                    mat4.perspective(
+                        l.lightInfo.outerCone * 2,
+                        1,
+                        0.0001,
+                        10,
+                        proj
+                    );
                 }
 
-                mat4.mul(proj, view, vp);
+                mat4.mul(proj, t.$glbInvMtx, vp);
             }
 
+            vec4.transformMat4([0, 0, -1, 0], t.$glbMtx, tmp);
             lights.push({
-                position: t.translation,
-                direction: vec3.transformQuat([0, 0, -1], t.rotation),
+                position: mat4.getTranslation(t.$glbMtx),
+                direction: [tmp[0], tmp[1], tmp[2]],
                 color: l.lightInfo.color,
                 ltype: TYPE_MAP[l.lightInfo.type],
                 intensity: l.lightInfo.intensity,
@@ -131,7 +146,7 @@ export class LightSystem extends System {
         }
 
         this.lights.set(lights);
-        this.nLights = entities.size;
+        this.nLights = lights.length;
 
         Game.gpu.device.queue.writeBuffer(
             this.lightsBuf,

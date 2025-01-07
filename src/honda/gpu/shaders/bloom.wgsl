@@ -1,5 +1,6 @@
 struct BloomUniforms {
-    threshold: f32
+    threshold: f32,
+    knee: f32,
 };
 
 const bigTri = array(
@@ -19,7 +20,13 @@ fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
 @fragment
 fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
     let p = vec2<u32>(fragCoord.xy);
-    let in = textureLoad(shaded, p, 0);
+    let inColor = textureLoad(shaded, p, 0);
 
-    return vec4f(step(vec3(uni.threshold), in.rgb) * in.rgb, 1.0);
+    let luminance = dot(inColor.rgb, vec3f(0.2126, 0.7152, 0.0722));
+
+    let thresholdFactor = smoothstep(uni.threshold - uni.knee, uni.threshold, luminance);
+
+    let bloomColor = inColor.rgb * thresholdFactor;
+
+    return vec4f(bloomColor, 1.0);
 }

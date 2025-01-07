@@ -1,16 +1,9 @@
-import { Component, EcsInjectable } from "@/honda/core";
-import { HondaBehavior } from "./hondaBehavior.class";
+import { Script } from "./script";
 
-type ScriptCtor<T = unknown> = new (eid: number, ...otherArgs: never[]) => T;
+export class ScriptComponent<T extends Script = Script> {
+    public name: string;
 
-@EcsInjectable()
-export class ScriptComponent<
-    T extends HondaBehavior = HondaBehavior
-> extends Component {
-    public instance: T | undefined;
-    constructor(public script: ScriptCtor<T>) {
-        super();
+    public constructor(public readonly script: T, name?: string) {
+        this.name = name ?? script.constructor.name;
     }
 }
-
-
