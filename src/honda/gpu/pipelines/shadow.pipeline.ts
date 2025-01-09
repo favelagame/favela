@@ -9,7 +9,9 @@ export function createShadow(g: WebGpu) {
         layout: g.device.createPipelineLayout({
             bindGroupLayouts: [g.bindGroupLayouts.shadow],
         }),
-        primitive: TRI_LIST_CULLED, // TODO(mbabnik): render both sides?
+        // There used to be a comment about rendering both sides here
+        // DO NOT! it leads to light bleeding on one-sided geometry
+        primitive: TRI_LIST_CULLED,
         vertex: {
             module,
             buffers: VERTEX_POS_UV,
@@ -24,7 +26,7 @@ export function createShadow(g: WebGpu) {
             depthWriteEnabled: true,
             depthBias: 2,
             depthBiasSlopeScale: 2.0,
-            depthBiasClamp: 0.5
+            depthBiasClamp: 0.5,
         },
     });
 }

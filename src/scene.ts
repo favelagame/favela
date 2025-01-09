@@ -6,6 +6,10 @@ import { GltfBinary } from "./honda/util/gltf";
 import { quat, vec3 } from "wgpu-matrix";
 import { Script } from "@/honda";
 import { clamp, PI_2 } from "./honda/util";
+import {
+    DynamicAABBColider,
+    StaticAABBColider,
+} from "./honda/systems/physics/colider.component";
 
 // basic deadzone
 function dz(x: number) {
@@ -97,7 +101,10 @@ class FlyCameraScript extends Script {
 
 export async function createScene() {
     // const gltfScene = await GltfBinary.fromUrl("./scenetest.glb");
-    const gltfScene = await GltfBinary.fromUrl("./Sponza5.glb");
+    const gltfScene = await GltfBinary.fromUrl("./collisiontest.glb");
+    // const gltfScene = await GltfBinary.fromUrl("./Sponza5.glb");
+
+    console.log(gltfScene);
 
     Game.scene.addChild(gltfScene.sceneAsNode());
     const skyTex = await createTextureFromImages(
@@ -113,10 +120,20 @@ export async function createScene() {
         { mips: true }
     );
 
+    const sc = new SceneNode();
+    sc.name = "staticColiders";
+    sc.addComponent(new StaticAABBColider([-12, -1, -12], [12, 0, 12], 1));
+    sc.addComponent(new StaticAABBColider([-12, 0, -12], [-10, 4, 12], 1));
+    sc.addComponent(new StaticAABBColider([10, 0, -12], [12, 4, 12], 1));
+    sc.addComponent(new StaticAABBColider([-12, 0, -12], [-10, 4, 12], 1));
+    sc.addComponent(new StaticAABBColider([-12, 0, 10], [12, 4, 12], 1));
+
     const camera = new SceneNode();
     camera.name = "Player";
     camera.addComponent(new CameraComponent(70, 0.1, 32, "MainCamera"));
-    camera.addComponent(new ScriptComponent(new FlyCameraScript()));
+    camera.addComponent(new DynamicAABBColider([0, 15, 0], [1, 1, 1], 1));
+
+    // camera.addComponent(new ScriptComponent(new FlyCameraScript()));
     Game.scene.addChild(camera);
 
     console.log(Game.scene.tree());

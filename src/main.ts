@@ -19,6 +19,7 @@ import { perfRenderer } from "./honda/util/perf";
 import { setError, setStatus } from "./honda/util/status";
 
 import { createScene } from "./scene";
+import { PhysicsSystem } from "./honda/systems/physics/physics.system";
 
 const canvas = document.querySelector("canvas")!;
 try {
@@ -32,6 +33,7 @@ Game.ecs.addSystem(new ScriptSystem());
 Game.ecs.addSystem(new MeshSystem());
 Game.ecs.addSystem(new CameraSystem());
 Game.ecs.addSystem(new LightSystem());
+Game.ecs.addSystem(new PhysicsSystem());
 
 const extras = await createScene();
 
@@ -48,11 +50,15 @@ const passes: IPass[] = [
 setStatus(undefined);
 Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
 
+const MAX_STEP = 0.1; // Atleast 10 updates per second
+
 function frame(t: number) {
     Game.perf.startFrame();
     Game.input.frame();
-    Game.deltaTime = t - Game.time;
-    Game.time = t;
+
+    const now = Math.min(performance.now() / 1000, Game.time + MAX_STEP);
+    Game.deltaTime = now - Game.time;
+    Game.time = now;
 
     Game.perf.measure("earlyUpdate");
     Game.ecs.earlyUpdate();
@@ -87,4 +93,4 @@ setInterval(
 );
 
 requestAnimationFrame(frame);
-Game.time = performance.now(); //get inital timestamp so delta isnt broken
+Game.time = performance.now() / 1000; //get inital timestamp so delta isnt broken
