@@ -1,4 +1,4 @@
-import { SceneNode } from "@/honda/core/scene";
+import { SceneNode } from "@/honda/core/node";
 import { System } from "../../core/ecs";
 import { MeshComponent } from "./mesh.component";
 import { Game, Material, Mesh } from "@/honda";

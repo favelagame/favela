@@ -12,7 +12,7 @@ import {
     ISpotLight,
     THondaLight,
 } from "@/honda/systems/light";
-import { SceneNode } from "@/honda/core/scene";
+import { SceneNode } from "@/honda/core/node";
 import { MeshComponent } from "@/honda/systems/mesh";
 import { LightComponent } from "@/honda/systems/light";
 

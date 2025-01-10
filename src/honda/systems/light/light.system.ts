@@ -5,7 +5,7 @@ import { mat4, Mat4, Vec3, vec4 } from "wgpu-matrix";
 import { IPointLight, ISpotLight, THondaLight } from "./lights.interface";
 import { Limits } from "@/honda/limits";
 import { System } from "@/honda/core/ecs";
-import { SceneNode } from "@/honda/core/scene";
+import { SceneNode } from "@/honda/core/node";
 
 interface ILightData {
     position: Vec3;

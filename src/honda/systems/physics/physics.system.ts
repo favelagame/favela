@@ -5,9 +5,12 @@ import {
     LAYER_PHYSICS,
     StaticAABBColider,
 } from "./colider.component";
-import { SceneNode } from "@/honda/core/scene";
+import { SceneNode } from "@/honda/core/node";
 import { Game } from "@/honda/state";
 import { vec3 } from "wgpu-matrix";
+
+// ta fajl je kinda in shambles, for some reason tuki useam number[3] namest F32array
+// shoutout Ziga Lesar, shoutout random tip iz stack overflowa, shoutout the one book
 
 type V3 = [number, number, number];
 
@@ -180,7 +183,6 @@ export class PhysicsSystem extends System {
         for (const dyn of this.dynamicColiders) {
             const t = this.reverse.get(dyn)?.transform;
             if (!t) continue;
-            console.log(dyn.name, "@", dyn.position);
             t.translation.set(dyn.position);
             t.update();
         }

@@ -1,7 +1,7 @@
 import { mat4 } from "wgpu-matrix";
 import { CameraComponent } from "./camera.component";
 import { System } from "@/honda/core/ecs";
-import { SceneNode } from "@/honda/core/scene";
+import { SceneNode } from "@/honda/core/node";
 
 export class CameraSystem extends System {
     public componentType = CameraComponent;

@@ -1,5 +1,5 @@
 import { nn } from "../util";
-import { SceneNode } from "./scene";
+import { SceneNode } from "./node";
 
 /* eslint-disable class-methods-use-this */
 export class ECS {

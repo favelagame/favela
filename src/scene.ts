@@ -1,6 +1,6 @@
 import { createTextureFromImages } from "webgpu-utils";
 import { Game, ScriptComponent } from "./honda";
-import { SceneNode } from "./honda/core/scene";
+import { SceneNode } from "./honda/core/node";
 import { CameraComponent } from "./honda/systems/camera";
 import { GltfBinary } from "./honda/util/gltf";
 import { quat, vec3 } from "wgpu-matrix";
