@@ -1,7 +1,7 @@
 import { mat4 } from "wgpu-matrix";
 import { Game } from "../state";
 import { IComponent } from "./ecs";
-import { Transform } from "./Transform";
+import { Transform } from "./transform";
 
 export class SceneNode {
     public name: string = "<unnammed>";
