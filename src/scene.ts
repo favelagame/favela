@@ -1,5 +1,5 @@
 import { createTextureFromImages } from "webgpu-utils";
-import { Game, LightComponent, ScriptComponent } from "./honda";
+import { Game, LightComponent, ScriptComponent, SoundEmmiter, SoundSystem } from "./honda";
 import { SceneNode } from "./honda/core/node";
 import { CameraComponent } from "./honda/systems/camera";
 import { GltfBinary } from "./honda/util/gltf";
@@ -24,6 +24,9 @@ class PlayerMoveScript extends Script {
     protected moveBaseVec = vec3.create(0, 0, 0);
     protected pitch = 0;
     protected yaw = 0;
+
+    protected elapsedFoot = 0;
+    protected foot = false;
 
     override update(): void {
         let boost = false;
@@ -90,9 +93,42 @@ class PlayerMoveScript extends Script {
         this.node.components
             .filter((x) => x instanceof DynamicAABBColider)
             .forEach((x) => {
-                (x as DynamicAABBColider).forces[0] = moveVec[0];
-                (x as DynamicAABBColider).forces[2] = moveVec[2];
+                (x as DynamicAABBColider).forces[0] += moveVec[0];
+                (x as DynamicAABBColider).forces[2] += moveVec[2];
+
+                if ( (x as DynamicAABBColider).forces[0] != 0 || (x as DynamicAABBColider).forces[2] != 0) {
+                    if (this.elapsedFoot > (boost ? 0.3 : 0.6)) {
+
+                        if (this.foot) {
+                            if (!Game.ecs.getSystem(SoundSystem).isPlaying("footstepR")) {
+                                Game.ecs.getSystem(SoundSystem).playAudio("footstepR", false, 1, "footstepR");
+                            }
+                        }
+                        else {
+                            if (!Game.ecs.getSystem(SoundSystem).isPlaying("footstepL")) {
+                                Game.ecs.getSystem(SoundSystem).playAudio("footstepL", false, 1, "footstepL");
+                            }
+                        }
+
+                        this.foot = !this.foot;
+                        this.elapsedFoot = 0;
+                    }                    
+                }
+                else {
+                    Game.ecs.getSystem(SoundSystem).stopAudio("footstepR");
+                    Game.ecs.getSystem(SoundSystem).stopAudio("footstepL");
+                }
             });
+
+        this.elapsedFoot += Game.deltaTime;
+    }
+}
+
+class PosastMoveScript extends Script {
+    protected moveBaseVec = vec3.create(-1, 0, 0);
+
+    override update(): void {
+        this.node.transform.translation[0] += this.moveBaseVec[0] * 0.01;
     }
 }
 
@@ -112,6 +148,12 @@ export async function createScene() {
         ],
         { mips: true }
     );
+
+    await Game.ecs.getSystem(SoundSystem).loadAudioFiles({
+        "beep": "audio/beep.mp3",
+        "footstepL": "audio/footstep_L.ogg",
+        "footstepR": "audio/footstep_R.ogg",
+    });
 
     {
         Game.scene.addChild(sponzaScene.sceneAsNode());

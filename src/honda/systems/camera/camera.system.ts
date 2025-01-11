@@ -44,4 +44,8 @@ export class CameraSystem extends System {
         // (VP)^-1 = V^-1 * P^-1
         mat4.mul(this.viewMtxInv, cc.projMtxInv, this.viewProjMtxInv);
     }
+
+    public getActiveCameraNode(): SceneNode {
+        return this.components.get(this.activeCamera)!;
+    }
 }
