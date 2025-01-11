@@ -24,6 +24,9 @@ class PlayerMoveScript extends Script {
     protected pitch = 0;
     protected yaw = 0;
 
+    protected elapsedFoot = 0;
+    protected foot = false;
+
     override update(): void {
         let boost = false;
         const g = Game.input.activeGamepad;
@@ -91,7 +94,32 @@ class PlayerMoveScript extends Script {
             .forEach((x) => {
                 (x as DynamicAABBColider).forces[0] += moveVec[0];
                 (x as DynamicAABBColider).forces[2] += moveVec[2];
+
+                if ( (x as DynamicAABBColider).forces[0] != 0 || (x as DynamicAABBColider).forces[2] != 0) {
+                    if (this.elapsedFoot > (boost ? 0.3 : 0.6)) {
+
+                        if (this.foot) {
+                            if (!Game.ecs.getSystem(SoundSystem).isPlaying("footstepR")) {
+                                Game.ecs.getSystem(SoundSystem).playAudio("footstepR", false, 1, "footstepR");
+                            }
+                        }
+                        else {
+                            if (!Game.ecs.getSystem(SoundSystem).isPlaying("footstepL")) {
+                                Game.ecs.getSystem(SoundSystem).playAudio("footstepL", false, 1, "footstepL");
+                            }
+                        }
+
+                        this.foot = !this.foot;
+                        this.elapsedFoot = 0;
+                    }                    
+                }
+                else {
+                    Game.ecs.getSystem(SoundSystem).stopAudio("footstepR");
+                    Game.ecs.getSystem(SoundSystem).stopAudio("footstepL");
+                }
             });
+
+        this.elapsedFoot += Game.deltaTime;
     }
 }
 
@@ -113,8 +141,8 @@ export async function createScene() {
     fakingPosastBrt.transform.scale.set([0.8, 0.8, 0.8]);
     fakingPosastBrt.transform.translation.set([8, 0, 0]);
     fakingPosastBrt.transform.update();
-    fakingPosastBrt.addComponent(new SoundEmmiter("beep", "Beep Sound", 0.5));
-    fakingPosastBrt.addComponent(new ScriptComponent(new PosastMoveScript()));
+    // fakingPosastBrt.addComponent(new SoundEmmiter("beep", "Beep Sound", 0.5));
+    // fakingPosastBrt.addComponent(new ScriptComponent(new PosastMoveScript()));
     Game.scene.addChild(fakingPosastBrt);
 
     console.log(gltfScene);
@@ -134,7 +162,9 @@ export async function createScene() {
     );
 
     await Game.ecs.getSystem(SoundSystem).loadAudioFiles({
-        "beep": "audio/beep.mp3"
+        "beep": "audio/beep.mp3",
+        "footstepL": "audio/footstep_L.ogg",
+        "footstepR": "audio/footstep_R.ogg",
     });
 
     const sc = new SceneNode();

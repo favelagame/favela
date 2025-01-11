@@ -125,10 +125,10 @@ export class SoundSystem extends System {
     }
 
     public playAudio(
-        audioId: string,
         audioKey: string,
         loop: boolean = false,
-        volume: number = 1
+        volume: number = 1,
+        audioId: string = ""
     ) {
         const buffer = this.audioBuffers.get(audioKey);
         if (!buffer) {
@@ -145,7 +145,9 @@ export class SoundSystem extends System {
         source.connect(gain);
         gain.connect(this.audioContext.destination);
 
-        this.activeSources.set(audioId, source);
+        if (audioId !== "") {
+            this.activeSources.set(audioId, source);
+        }
 
         source.onended = () => {
             this.activeSources.delete(audioId);
@@ -223,4 +225,7 @@ export class SoundSystem extends System {
         component.stop();
     }
 
+    public isPlaying(audioId: string) {
+        return this.activeSources.has(audioId);
+    }
 }
