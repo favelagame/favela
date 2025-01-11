@@ -1,4 +1,5 @@
 import { IComponent } from "@/honda/core/ecs";
+import { SceneNode } from "@/honda/core/node";
 
 export const LAYER_PHYSICS = 1;
 export const LAYER_ENEMY = 2;
@@ -8,17 +9,30 @@ export const LAYER_QUERY = 16;
 
 type V3 = [number, number, number];
 
+export interface ICollisonInfo {
+    node: SceneNode;
+    colider: StaticAABBColider | DynamicAABBColider;
+}
+
 export class Colider implements IComponent {
+    public collisions = new Map<Colider, ICollisonInfo>();
+
     constructor(
         public readonly isStatic: boolean,
-        public layers: number,
+        public onLayers: number,
+        public detectLayers: number,
         public name: string = "unknown"
     ) {}
 }
 
 export class StaticAABBColider extends Colider {
-    constructor(public min: V3, public max: V3, mask: number = LAYER_PHYSICS) {
-        super(true, mask);
+    constructor(
+        public min: V3,
+        public max: V3,
+        onLayers: number = LAYER_PHYSICS,
+        detectLayers = 0
+    ) {
+        super(true, onLayers, detectLayers);
     }
 }
 
@@ -33,8 +47,13 @@ export class DynamicAABBColider extends Colider {
 
     public onFloor = false;
 
-    constructor(public position: V3, public size: V3, mask: number = 0) {
-        super(false, mask | LAYER_PHYSICS);
+    constructor(
+        public position: V3,
+        public size: V3,
+        onLayers: number,
+        detectLayers = 0
+    ) {
+        super(false, onLayers | LAYER_PHYSICS, detectLayers);
         this.updateBounds();
     }
 

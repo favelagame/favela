@@ -1,5 +1,5 @@
 import { createTextureFromImages } from "webgpu-utils";
-import { Game, LightComponent, ScriptComponent, SoundEmmiter, SoundSystem } from "./honda";
+import { Game, LightComponent, ScriptComponent, SoundSystem } from "./honda";
 import { SceneNode } from "./honda/core/node";
 import { CameraComponent } from "./honda/systems/camera";
 import { GltfBinary } from "./honda/util/gltf";
@@ -10,6 +10,9 @@ import {
     DynamicAABBColider,
     LAYER_ENEMY,
     LAYER_PHYSICS,
+    LAYER_PICKUP,
+    LAYER_QUERY,
+    StaticAABBColider,
 } from "./honda/systems/physics/colider.component";
 
 // basic deadzone
@@ -25,8 +28,15 @@ class PlayerMoveScript extends Script {
     protected pitch = 0;
     protected yaw = 0;
 
-    protected elapsedFoot = 0;
     protected foot = false;
+    protected elapsedFoot = 0;
+
+    protected colider!: DynamicAABBColider;
+
+    public onAttach(): void {
+        this.colider = this.node.assertComponent(DynamicAABBColider);
+        this.colider.detectLayers |= LAYER_QUERY | LAYER_PICKUP;
+    }
 
     override update(): void {
         let boost = false;
@@ -89,38 +99,48 @@ class PlayerMoveScript extends Script {
 
         moveVec[0] *= speedMultiplier;
         moveVec[2] *= speedMultiplier;
+        this.colider.forces[0] += moveVec[0];
+        this.colider.forces[2] += moveVec[2];
+        if (this.colider.onFloor && Game.input.btnMap["Space"]) {
+            this.colider.forces[1] += 3000;
+        }
 
-        this.node.components
-            .filter((x) => x instanceof DynamicAABBColider)
-            .forEach((x) => {
-                (x as DynamicAABBColider).forces[0] += moveVec[0];
-                (x as DynamicAABBColider).forces[2] += moveVec[2];
-
-                if ( (x as DynamicAABBColider).forces[0] != 0 || (x as DynamicAABBColider).forces[2] != 0) {
-                    if (this.elapsedFoot > (boost ? 0.3 : 0.6)) {
-
-                        if (this.foot) {
-                            if (!Game.ecs.getSystem(SoundSystem).isPlaying("footstepR")) {
-                                Game.ecs.getSystem(SoundSystem).playAudio("footstepR", false, 1, "footstepR");
-                            }
-                        }
-                        else {
-                            if (!Game.ecs.getSystem(SoundSystem).isPlaying("footstepL")) {
-                                Game.ecs.getSystem(SoundSystem).playAudio("footstepL", false, 1, "footstepL");
-                            }
-                        }
-
-                        this.foot = !this.foot;
-                        this.elapsedFoot = 0;
-                    }                    
+        if (this.colider.forces[0] != 0 || this.colider.forces[2] != 0) {
+            if (this.elapsedFoot > (boost ? 0.3 : 0.6)) {
+                if (this.foot) {
+                    if (
+                        !Game.ecs.getSystem(SoundSystem).isPlaying("footstepR")
+                    ) {
+                        Game.ecs
+                            .getSystem(SoundSystem)
+                            .playAudio("footstepR", false, 1, "footstepR");
+                    }
+                } else {
+                    if (
+                        !Game.ecs.getSystem(SoundSystem).isPlaying("footstepL")
+                    ) {
+                        Game.ecs
+                            .getSystem(SoundSystem)
+                            .playAudio("footstepL", false, 1, "footstepL");
+                    }
                 }
-                else {
-                    Game.ecs.getSystem(SoundSystem).stopAudio("footstepR");
-                    Game.ecs.getSystem(SoundSystem).stopAudio("footstepL");
-                }
-            });
+
+                this.foot = !this.foot;
+                this.elapsedFoot = 0;
+            }
+        } else {
+            Game.ecs.getSystem(SoundSystem).stopAudio("footstepR");
+            Game.ecs.getSystem(SoundSystem).stopAudio("footstepL");
+        }
 
         this.elapsedFoot += Game.deltaTime;
+    }
+
+    override lateUpdate(): void {
+        // this can also be called in the next frame's update
+        for (const c of this.colider.collisions) {
+            console.log("coliding", c);
+        }
     }
 }
 
@@ -135,6 +155,7 @@ class PosastMoveScript extends Script {
 export async function createScene() {
     const alienation = await GltfBinary.fromUrl("./Alienation.glb");
     const sponzaScene = await GltfBinary.fromUrl("./SponzaScene.glb");
+    const pickups = await GltfBinary.fromUrl("./pickups.glb");
 
     const skyTex = await createTextureFromImages(
         Game.gpu.device,
@@ -150,9 +171,9 @@ export async function createScene() {
     );
 
     await Game.ecs.getSystem(SoundSystem).loadAudioFiles({
-        "beep": "audio/beep.mp3",
-        "footstepL": "audio/footstep_L.ogg",
-        "footstepR": "audio/footstep_R.ogg",
+        beep: "audio/beep.mp3",
+        footstepL: "audio/footstep_L.ogg",
+        footstepR: "audio/footstep_R.ogg",
     });
 
     {
@@ -213,6 +234,48 @@ export async function createScene() {
         camera.addChild(ln);
 
         Game.scene.addChild(camera);
+    }
+
+    {
+        const pickupPoi = sponzaScene.getPOIByName("PickupLight")!;
+        const pickup = pickups.nodeConvert(0)!;
+        pickup.transform.translation.set(pickupPoi.position);
+        quat.fromEuler(
+            0,
+            Math.PI / 2,
+            Math.PI / 2,
+            "xyz",
+            pickup.transform.rotation
+        );
+        pickup.transform.scale.set([0.05, 0.05, 0.05]);
+        pickup.transform.update();
+        pickup.addComponent(
+            new StaticAABBColider(
+                vec3.sub(pickupPoi.position, [0.1, 0.1, 0.1]),
+                vec3.add(pickupPoi.position, [0.1, 0.1, 0.1]),
+                LAYER_PICKUP
+            )
+        );
+
+        Game.scene.addChild(pickup);
+    }
+
+    {
+        const pickupPoi = sponzaScene.getPOIByName("PickupPistol")!;
+        const pickup = pickups.nodeConvert(1)!;
+        pickup.transform.translation.set(pickupPoi.position);
+        quat.fromEuler(0, 0, Math.PI / 2, "xyz", pickup.transform.rotation);
+        pickup.transform.scale.set([0.05, 0.05, 0.05]);
+        pickup.transform.update();
+        pickup.addComponent(
+            new StaticAABBColider(
+                vec3.sub(pickupPoi.position, [0.1, 0.1, 0.1]),
+                vec3.add(pickupPoi.position, [0.1, 0.1, 0.1]),
+                LAYER_PICKUP
+            )
+        );
+
+        Game.scene.addChild(pickup);
     }
 
     console.log(Game.scene.tree());

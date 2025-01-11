@@ -20,6 +20,7 @@ import {
     LAYER_INTERACT,
     LAYER_PHYSICS,
     LAYER_PICKUP,
+    LAYER_QUERY,
     StaticAABBColider,
 } from "@/honda/systems/physics/colider.component";
 
@@ -102,7 +103,7 @@ export class GltfBinary {
         enemy: LAYER_ENEMY,
         interact: LAYER_INTERACT,
         pickup: LAYER_PICKUP,
-        query: LAYER_PICKUP,
+        query: LAYER_QUERY,
     };
 
     static getWebGpuSamplerFilter(

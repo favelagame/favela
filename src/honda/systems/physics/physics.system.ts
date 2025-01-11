@@ -124,6 +124,7 @@ export class PhysicsSystem extends System {
             // reset force AX
             vec3.zero(dc.forces);
 
+            dc.collisions.clear();
             dc.onFloor = false;
         }
 
@@ -139,14 +140,26 @@ export class PhysicsSystem extends System {
             for (const other of this.staticColiders) {
                 if (!aabbToAabb(dc, other)) continue;
 
+                if (other.detectLayers & dc.onLayers) {
+                    other.collisions.set(dc, {
+                        colider: dc,
+                        node: this.reverse.get(dc)!,
+                    });
+                }
+
+                if (dc.detectLayers & other.onLayers) {
+                    dc.collisions.set(other, {
+                        colider: other,
+                        node: this.reverse.get(other)!,
+                    });
+                }
                 collision.push([dc, other]);
             }
         }
 
         // apply all collisions
         for (const [dyn, otr] of collision) {
-            
-            if (otr.layers & LAYER_PHYSICS) {
+            if (otr.onLayers & LAYER_PHYSICS) {
                 const mv = aaabResolve(dyn, otr);
                 if (mv[1] > 0) dyn.onFloor = true;
 
