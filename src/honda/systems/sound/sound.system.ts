@@ -196,6 +196,10 @@ export class SoundSystem extends System {
         panner.positionY.value = node.transform.translation[1];
         panner.positionZ.value = node.transform.translation[2];
         panner.coneInnerAngle = 360;
+        panner.distanceModel = "inverse";
+        panner.refDistance = 1;
+        panner.rolloffFactor = 50;
+        panner.maxDistance = 100;
         this.activeComponentPanners.set(component, panner);
 
         const gain = this.audioContext.createGain();

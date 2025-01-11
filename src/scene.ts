@@ -99,7 +99,7 @@ class PosastMoveScript extends Script {
     protected moveBaseVec = vec3.create(-1, 0, 0);
 
     override update(): void {
-        this.node.transform.translation[0] += this.moveBaseVec[0] * 0.1;
+        this.node.transform.translation[0] += this.moveBaseVec[0] * 0.01;
     }
 }
 
