@@ -70,24 +70,24 @@ export class SceneNode {
 
     public assertComponent<T extends IComponent>(
         ctor: new (...args: never) => T
-    ) {
+    ): T {
         return nn(
             this.components.find((x) => x instanceof ctor),
             "component isn't"
-        );
+        ) as T;
     }
 
     public assertChildComponent<T extends IComponent>(
         ctor: new (...args: never) => T,
         maxDepth: 127
-    ) {
+    ): T {
         return nn(
             this.findChild(
                 (x) => x.children.values().some((y) => y instanceof ctor),
                 maxDepth
-            ),
+            )?.components.find((y) => y instanceof ctor),
             "child isn't"
-        );
+        ) as T;
     }
 
     public assertChildWithName(name: string, maxDepth: 127) {

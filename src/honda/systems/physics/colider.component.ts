@@ -31,13 +31,14 @@ export class DynamicAABBColider extends Colider {
     public min: V3 = [0, 0, 0];
     public max: V3 = [0, 0, 0];
 
+    public onFloor = false;
+
     constructor(public position: V3, public size: V3, mask: number = 0) {
         super(false, mask | LAYER_PHYSICS);
         this.updateBounds();
     }
 
     public moveBy(dx: number, dy: number, dz: number) {
-        // console.log(this.position, "+", ...arguments);
         this.position[0] += dx;
         this.position[1] += dy;
         this.position[2] += dz;

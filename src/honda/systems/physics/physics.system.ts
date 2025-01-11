@@ -123,6 +123,8 @@ export class PhysicsSystem extends System {
             );
             // reset force AX
             vec3.zero(dc.forces);
+
+            dc.onFloor = false;
         }
 
         const collision: [DynamicAABBColider, AABB][] = [];
@@ -143,8 +145,11 @@ export class PhysicsSystem extends System {
 
         // apply all collisions
         for (const [dyn, otr] of collision) {
+            
             if (otr.layers & LAYER_PHYSICS) {
                 const mv = aaabResolve(dyn, otr);
+                if (mv[1] > 0) dyn.onFloor = true;
+
                 if (otr.isStatic) {
                     dyn.moveBy(...mv);
                     // mv is vector that stops us from coliding

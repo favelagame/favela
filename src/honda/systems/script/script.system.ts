@@ -16,6 +16,7 @@ export class ScriptSystem extends System {
             console.warn("moved component to new node", comp, node);
         }
         (comp.script as unknown as PrivateScript)._node = node;
+        comp.script.onAttach();
         this.components.set(comp, node);
     }
 
