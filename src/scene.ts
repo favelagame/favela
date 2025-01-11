@@ -6,10 +6,6 @@ import { GltfBinary } from "./honda/util/gltf";
 import { quat, vec3 } from "wgpu-matrix";
 import { Script } from "@/honda";
 import { clamp, PI_2 } from "./honda/util";
-import {
-    DynamicAABBColider,
-    StaticAABBColider,
-} from "./honda/systems/physics/colider.component";
 
 // basic deadzone
 function dz(x: number) {
@@ -19,7 +15,7 @@ function dz(x: number) {
 const sens = 0.005;
 const sensGamepad = 0.05;
 
-class FlyCameraScript extends Script {
+class PlayerScript extends Script {
     protected moveBaseVec = vec3.create(0, 0, 0);
     protected pitch = 0;
     protected yaw = 0;
@@ -73,12 +69,13 @@ class FlyCameraScript extends Script {
         }
 
         if (this.moveBaseVec[0] != 0 || this.moveBaseVec[2] != 0) {
+            //todo move
             if (vec3.length(this.moveBaseVec) > 1) {
                 vec3.normalize(this.moveBaseVec, this.moveBaseVec);
             }
             vec3.mulScalar(
                 this.moveBaseVec,
-                (Game.deltaTime / 1000) * (boost ? 5 : 1),
+                Game.deltaTime * (boost ? 5 : 1),
                 this.moveBaseVec
             );
 
@@ -101,8 +98,15 @@ class FlyCameraScript extends Script {
 
 export async function createScene() {
     // const gltfScene = await GltfBinary.fromUrl("./scenetest.glb");
-    const gltfScene = await GltfBinary.fromUrl("./collisiontest.glb");
-    // const gltfScene = await GltfBinary.fromUrl("./Sponza5.glb");
+    // const gltfScene = await GltfBinary.fromUrl("./collisiontest.glb");
+    const gltfScene = await GltfBinary.fromUrl("./Sponza5.glb");
+    const alienation = await GltfBinary.fromUrl("./Alienation.glb");
+
+    const fakingPosastBrt = alienation.nodeConvert(0);
+    fakingPosastBrt.transform.scale.set([0.6, 0.6, 0.6]);
+    fakingPosastBrt.transform.translation.set([8, 0, 0]);
+    fakingPosastBrt.transform.update();
+    Game.scene.addChild(fakingPosastBrt);
 
     console.log(gltfScene);
 
@@ -122,18 +126,18 @@ export async function createScene() {
 
     const sc = new SceneNode();
     sc.name = "staticColiders";
-    sc.addComponent(new StaticAABBColider([-12, -1, -12], [12, 0, 12], 1));
-    sc.addComponent(new StaticAABBColider([-12, 0, -12], [-10, 4, 12], 1));
-    sc.addComponent(new StaticAABBColider([10, 0, -12], [12, 4, 12], 1));
-    sc.addComponent(new StaticAABBColider([-12, 0, -12], [-10, 4, 12], 1));
-    sc.addComponent(new StaticAABBColider([-12, 0, 10], [12, 4, 12], 1));
+    // sc.addComponent(new StaticAABBColider([-12, -1, -12], [12, 0, 12], 1));
+    // sc.addComponent(new StaticAABBColider([-12, 0, -12], [-10, 4, 12], 1));
+    // sc.addComponent(new StaticAABBColider([10, 0, -12], [12, 4, 12], 1));
+    // sc.addComponent(new StaticAABBColider([-12, 0, -12], [-10, 4, 12], 1));
+    // sc.addComponent(new StaticAABBColider([-12, 0, 10], [12, 4, 12], 1));
 
     const camera = new SceneNode();
     camera.name = "Player";
     camera.addComponent(new CameraComponent(70, 0.1, 32, "MainCamera"));
-    camera.addComponent(new DynamicAABBColider([0, 15, 0], [1, 1, 1], 1));
+    camera.addComponent(new ScriptComponent(new PlayerScript()));
+    // camera.addComponent(new DynamicAABBColider([0, 15, 0], [1, 1, 1], 1));
 
-    // camera.addComponent(new ScriptComponent(new FlyCameraScript()));
     Game.scene.addChild(camera);
 
     console.log(Game.scene.tree());

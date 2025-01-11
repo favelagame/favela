@@ -2,6 +2,7 @@ import { mat4 } from "wgpu-matrix";
 import { Game } from "../state";
 import { IComponent } from "./ecs";
 import { Transform } from "./transform";
+import { nn } from "../util";
 
 export class SceneNode {
     public name: string = "<unnammed>";
@@ -65,5 +66,54 @@ export class SceneNode {
             ...this.children.values().map((x) => x.tree(l + 1)),
             " ┃".repeat(l),
         ].join("\n");
+    }
+
+    public assertComponent<T extends IComponent>(
+        ctor: new (...args: never) => T
+    ) {
+        return nn(
+            this.components.find((x) => x instanceof ctor),
+            "component isn't"
+        );
+    }
+
+    public assertChildComponent<T extends IComponent>(
+        ctor: new (...args: never) => T,
+        maxDepth: 127
+    ) {
+        return nn(
+            this.findChild(
+                (x) => x.children.values().some((y) => y instanceof ctor),
+                maxDepth
+            ),
+            "child isn't"
+        );
+    }
+
+    public assertChildWithName(name: string, maxDepth: 127) {
+        return nn(
+            this.findChild((x) => x.name == name, maxDepth),
+            "child isn't"
+        );
+    }
+
+    /**
+     * Uoooh 😭💢
+     * btw this is breath first first, depth first second
+     */
+    public findChild(
+        cond: (child: SceneNode) => boolean,
+        maxDepth = 127
+    ): SceneNode | undefined {
+        const direct = this.children.values().find(cond);
+        if (direct) return direct;
+
+        if (maxDepth <= 1) return undefined;
+
+        for (const child of this.children) {
+            const f = child.findChild(cond, maxDepth - 1);
+            if (f) return f;
+        }
+        return undefined;
     }
 }
