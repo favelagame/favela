@@ -12,10 +12,10 @@ function dz(x: number) {
     return Math.abs(x) < 0.1 ? 0 : x;
 }
 
-const sens = 0.005;
+const sens = 0.0009;
 const sensGamepad = 0.05;
 
-class PlayerScript extends Script {
+class PlayerMoveScript extends Script {
     protected moveBaseVec = vec3.create(0, 0, 0);
     protected pitch = 0;
     protected yaw = 0;
@@ -65,34 +65,23 @@ class PlayerScript extends Script {
                 0,
                 "yxz",
                 this.node.transform.rotation
-            );
+            ); 
         }
 
-        if (this.moveBaseVec[0] != 0 || this.moveBaseVec[2] != 0) {
-            //todo move
-            if (vec3.length(this.moveBaseVec) > 1) {
-                vec3.normalize(this.moveBaseVec, this.moveBaseVec);
-            }
-            vec3.mulScalar(
-                this.moveBaseVec,
-                Game.deltaTime * (boost ? 5 : 1),
-                this.moveBaseVec
-            );
+        // take camera direction into account
+        const moveVec = vec3.create();
+        vec3.transformQuat(this.moveBaseVec, this.node.transform.rotation, moveVec);
+        vec3.normalize(moveVec, moveVec);
 
-            vec3.transformQuat(
-                this.moveBaseVec,
-                this.node.transform.rotation,
-                this.moveBaseVec
-            );
+        const speedMultiplier = boost ? 40 : 20;
 
-            vec3.add(
-                this.node.transform.translation,
-                this.moveBaseVec,
-                this.node.transform.translation
-            );
-        }
+        moveVec[0] *= speedMultiplier;
+        moveVec[2] *= speedMultiplier;
 
-        this.node.transform.update();
+        this.node.components.filter((x) => x instanceof DynamicAABBColider).forEach((x) => {
+            (x as DynamicAABBColider).forces[0] = moveVec[0];
+            (x as DynamicAABBColider).forces[2] = moveVec[2];
+        });
     }
 }
 
@@ -135,8 +124,8 @@ export async function createScene() {
     const camera = new SceneNode();
     camera.name = "Player";
     camera.addComponent(new CameraComponent(70, 0.1, 32, "MainCamera"));
-    camera.addComponent(new ScriptComponent(new PlayerScript()));
-    // camera.addComponent(new DynamicAABBColider([0, 15, 0], [1, 1, 1], 1));
+    camera.addComponent(new DynamicAABBColider([0, 15, 0], [1, 1, 1], 1));
+    camera.addComponent(new ScriptComponent(new PlayerMoveScript()));
 
     Game.scene.addChild(camera);
 
