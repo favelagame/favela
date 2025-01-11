@@ -25,7 +25,7 @@ export class PostprocessPass implements IPass {
         fogDensity: 0.01,
         fogColor: [0.6, 0.6, 0.6],
 
-        occlusionPower: 1,
+        occlusionPower: 1.6,
         exposure: 1,
         gamma: 2.2,
 

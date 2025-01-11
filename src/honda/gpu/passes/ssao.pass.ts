@@ -45,12 +45,12 @@ export class SSAOPass implements IPass {
     protected bindGroup!: GPUBindGroup;
     protected noiseTexture: GPUTexture;
     protected noiseTextureView: GPUTextureView;
-    protected ssaoSamples = generateSampleHemisphere(64);
+    protected ssaoSamples = generateSampleHemisphere(32);
 
     protected guiSettings = {
-        kernelSize: 64,
-        radius: 0.5,
-        bias: 0.025,
+        kernelSize: 32,
+        radius: 0.35,
+        bias: 0.010,
     };
 
     protected disable = false;
