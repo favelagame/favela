@@ -3,6 +3,7 @@ export * from "./limits";
 
 export * from "./core/ecs";
 export * from "./core/scene";
+export * from "./core/node";
 
 export * from "./systems";
 

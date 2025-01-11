@@ -14,7 +14,7 @@ import { vec3 } from "wgpu-matrix";
 
 type V3 = [number, number, number];
 
-const GRAVITY: V3 = [0, -9.81, 0];
+const GRAVITY: V3 = [0, -90, 0];
 
 function rover(mina: number, maxa: number, minb: number, maxb: number) {
     return (
@@ -145,7 +145,6 @@ export class PhysicsSystem extends System {
         for (const [dyn, otr] of collision) {
             if (otr.layers & LAYER_PHYSICS) {
                 const mv = aaabResolve(dyn, otr);
-                console.log(mv);
                 if (otr.isStatic) {
                     dyn.moveBy(...mv);
                     // mv is vector that stops us from coliding
