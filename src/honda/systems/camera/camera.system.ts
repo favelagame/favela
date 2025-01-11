@@ -45,22 +45,6 @@ export class CameraSystem extends System {
         mat4.mul(this.viewMtxInv, cc.projMtxInv, this.viewProjMtxInv);
     }
 
-    public getCameraDirection(): { x: number, y: number, z: number } {
-        return {
-            x: -this.viewMtx[2],
-            y: -this.viewMtx[6],
-            z: -this.viewMtx[10]
-        };
-    }
-
-    public getCameraUp(): { x: number, y: number, z: number } {
-        return {
-            x: this.viewMtx[4],
-            y: this.viewMtx[5],
-            z: this.viewMtx[6]
-        };
-    }
-
     public getActiveCameraNode(): SceneNode {
         return this.components.get(this.activeCamera)!;
     }
