@@ -1,14 +1,15 @@
 import { createTextureFromImages } from "webgpu-utils";
-import { Game, ScriptComponent } from "./honda";
+import { Game, LightComponent, ScriptComponent } from "./honda";
 import { SceneNode } from "./honda/core/node";
 import { CameraComponent } from "./honda/systems/camera";
 import { GltfBinary } from "./honda/util/gltf";
 import { quat, vec3 } from "wgpu-matrix";
 import { Script } from "@/honda";
-import { clamp, PI_2 } from "./honda/util";
+import { clamp, nn, PI_2 } from "./honda/util";
 import {
     DynamicAABBColider,
-    StaticAABBColider,
+    LAYER_ENEMY,
+    LAYER_PHYSICS,
 } from "./honda/systems/physics/colider.component";
 
 // basic deadzone
@@ -96,20 +97,9 @@ class PlayerMoveScript extends Script {
 }
 
 export async function createScene() {
-    // const gltfScene = await GltfBinary.fromUrl("./scenetest.glb");
-    const gltfScene = await GltfBinary.fromUrl("./collisiontest.glb");
-    // const gltfScene = await GltfBinary.fromUrl("./Sponza5.glb");
     const alienation = await GltfBinary.fromUrl("./Alienation.glb");
+    const sponzaScene = await GltfBinary.fromUrl("./SponzaScene.glb");
 
-    const fakingPosastBrt = alienation.nodeConvert(0);
-    fakingPosastBrt.transform.scale.set([0.6, 0.6, 0.6]);
-    fakingPosastBrt.transform.translation.set([8, 0, 0]);
-    fakingPosastBrt.transform.update();
-    Game.scene.addChild(fakingPosastBrt);
-
-    console.log(gltfScene);
-
-    Game.scene.addChild(gltfScene.sceneAsNode());
     const skyTex = await createTextureFromImages(
         Game.gpu.device,
         [
@@ -123,26 +113,66 @@ export async function createScene() {
         { mips: true }
     );
 
-    const sc = new SceneNode();
-    sc.name = "staticColiders";
+    {
+        Game.scene.addChild(sponzaScene.sceneAsNode());
+        const coliders = new SceneNode();
+        coliders.name = "StaticColiders";
+        sponzaScene
+            .getStaticColiders()
+            .forEach((x) => coliders.addComponent(x));
+        Game.scene.addChild(coliders);
+    }
 
-    sc.addComponent(new StaticAABBColider([-12, -1, -12], [12, 0, 12], 1));
+    {
+        const fakingPosastBrt = nn(alienation.nodeConvert(0), "posast ni bla");
+        fakingPosastBrt.transform.scale.set([0.6, 0.6, 0.6]);
+        fakingPosastBrt.transform.translation.set(
+            sponzaScene.getPOIByName("EnemySpawn")!.position!
+        );
+        fakingPosastBrt.addComponent(
+            new DynamicAABBColider(
+                sponzaScene.getPOIByName("EnemySpawn")!.position!,
+                [0.5, 2, 0.5], //TODO: fix model offset
+                LAYER_ENEMY | LAYER_PHYSICS
+            )
+        );
+        fakingPosastBrt.transform.update();
+        Game.scene.addChild(fakingPosastBrt);
+    }
 
-    sc.addComponent(new StaticAABBColider([-12, 0, -12], [-10, 4, 12], 1));
-    sc.addComponent(new StaticAABBColider([10, 0, -12], [12, 4, 12], 1));
-    sc.addComponent(new StaticAABBColider([-12, 0, -12], [12, 4, -10], 1));
+    {
+        const camera = new SceneNode();
+        camera.name = "Player";
+        camera.addComponent(new CameraComponent(70, 0.1, 32, "MainCamera"));
+        camera.addComponent(
+            new DynamicAABBColider(
+                sponzaScene.getPOIByName("PlayerSpawn")!.position!,
+                [0.5, 2, 0.5],
+                1
+            )
+        );
+        camera.addComponent(new ScriptComponent(new PlayerMoveScript()));
 
-    sc.addComponent(new StaticAABBColider([-12, 0, 10], [12, 4, 12], 1));
+        const ln = new SceneNode();
+        ln.name = "lightholder";
+        ln.transform.translation.set([0.05, -0.2, -0.1]);
+        ln.transform.update();
+        ln.addComponent(
+            new LightComponent({
+                castShadows: true,
+                color: [1, 1, 1],
+                type: "spot",
+                intensity: 300, // zlt bom ceu
+                innerCone: 0.5,
+                outerCone: 0.7,
+                maxRange: 15,
+            })
+        );
+        camera.addChild(ln);
 
-    const camera = new SceneNode();
-    camera.name = "Player";
-    camera.addComponent(new CameraComponent(70, 0.1, 32, "MainCamera"));
-    camera.addComponent(new DynamicAABBColider([0, 15, 0], [0.5, 2, 0.5], 1));
-    camera.addComponent(new ScriptComponent(new PlayerMoveScript()));
-
-    Game.scene.addChild(camera);
+        Game.scene.addChild(camera);
+    }
 
     console.log(Game.scene.tree());
-
     return { skyTex };
 }

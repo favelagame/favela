@@ -4,7 +4,7 @@ import type * as TG from "./gltf.types";
 import { Material } from "@/honda/gpu/material/material";
 import { Game } from "@/honda/state";
 import { generateMipmap } from "webgpu-utils";
-import { vec3, vec4 } from "wgpu-matrix";
+import { quat, vec3, vec4 } from "wgpu-matrix";
 import { AlphaMode } from "@/honda/gpu/material/material.types";
 import {
     IDirectionalLight,
@@ -15,6 +15,13 @@ import {
 import { SceneNode } from "@/honda/core/node";
 import { MeshComponent } from "@/honda/systems/mesh";
 import { LightComponent } from "@/honda/systems/light";
+import {
+    LAYER_ENEMY,
+    LAYER_INTERACT,
+    LAYER_PHYSICS,
+    LAYER_PICKUP,
+    StaticAABBColider,
+} from "@/honda/systems/physics/colider.component";
 
 export type TTypedArrayCtor<T> = {
     new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
@@ -44,6 +51,12 @@ export interface FavelaBufferView {
     isElement: boolean;
     bOffset: number;
     bLength: number;
+}
+
+export interface POI {
+    position: [number, number, number];
+    name: string;
+    props: Record<string, unknown>;
 }
 
 /**
@@ -82,6 +95,14 @@ export class GltfBinary {
         BLEND: AlphaMode.BLEND,
         MASK: AlphaMode.MASK,
         OPAQUE: AlphaMode.OPAQUE,
+    };
+
+    static readonly COLIDER_LAYER_MAP: Record<string, number> = {
+        physics: LAYER_PHYSICS,
+        enemy: LAYER_ENEMY,
+        interact: LAYER_INTERACT,
+        pickup: LAYER_PICKUP,
+        query: LAYER_PICKUP,
     };
 
     static getWebGpuSamplerFilter(
@@ -670,12 +691,18 @@ export class GltfBinary {
         });
     }
 
-    public nodeConvert(index: number) {
+    public nodeConvert(index: number): SceneNode | undefined {
         const gNode = nn(this.json.nodes?.[index]);
         const node = new SceneNode();
         node.name = gNode.name ?? `${this.name}.nodes.${index}`;
 
         if (gNode.matrix) console.warn("glTF Matrices unsupported");
+
+        if (gNode.extras) {
+            // Don't load coliders and POIs into scene
+            if (gNode.extras["poi"]) return undefined;
+            if (gNode.extras["colider"]) return undefined;
+        }
 
         // transform
         if (gNode.translation) {
@@ -707,7 +734,10 @@ export class GltfBinary {
         }
 
         // children
-        gNode.children?.forEach((c) => node.addChild(this.nodeConvert(c)));
+        gNode.children?.forEach((c) => {
+            const newNode = this.nodeConvert(c);
+            if (newNode) node.addChild(newNode);
+        });
 
         return node;
     }
@@ -717,7 +747,10 @@ export class GltfBinary {
         const node = new SceneNode();
         node.name = scene.name ?? `${this.name}.scenes.${index}`;
 
-        scene.nodes?.forEach((n) => node.addChild(this.nodeConvert(n)));
+        scene.nodes?.forEach((c) => {
+            const newNode = this.nodeConvert(c);
+            if (newNode) node.addChild(newNode);
+        });
 
         return node;
     }
@@ -765,5 +798,99 @@ export class GltfBinary {
             default:
                 throw new Error("Unknown light type" + gLight.type);
         }
+    }
+
+    public getStaticColiders(sceneIndex = 0): StaticAABBColider[] {
+        const scene = nn(this.json.scenes?.[sceneIndex], "Scene idx OOB");
+        const coliders: StaticAABBColider[] = [];
+
+        for (const nodeIdx of scene.nodes ?? []) {
+            const gColiderNode = nn(this.json.nodes?.[nodeIdx], "node idx OOB");
+
+            const coliderLayers = gColiderNode.extras?.["colider"];
+            if (!coliderLayers || typeof coliderLayers != "string") continue;
+
+            const layers = coliderLayers
+                .trim()
+                .split(",")
+                .reduce((p, c) => {
+                    const key = c.trim().toLowerCase();
+                    const bit = GltfBinary.COLIDER_LAYER_MAP[key] ?? 0;
+                    if (bit == 0) console.warn(`Unknown colider layer: ${key}`);
+
+                    return p || bit;
+                }, 0);
+
+            const pos = gColiderNode.translation;
+            if (!pos) continue;
+            const scale = gColiderNode.scale ?? [1, 1, 1];
+
+            const { angle, axis } = quat.toAxisAngle(
+                gColiderNode.rotation ?? [0, 0, 0, 0]
+            );
+            let flipXz = false;
+
+            if (angle > 0) {
+                if (
+                    vec3.equalsApproximately(axis, [0, 1, 0]) ||
+                    vec3.equalsApproximately(axis, [0, -1, 0])
+                ) {
+                    flipXz = !!(Math.round(angle / (Math.PI / 2)) % 2);
+                } else if (vec3.length(axis) > 0.5) {
+                    console.warn(
+                        "unsupported quaternion rotation on AABB:",
+                        gColiderNode.rotation,
+                        angle,
+                        axis
+                    );
+                    continue;
+                }
+            }
+
+            const scaleX = Math.abs(scale[flipXz ? 2 : 0]),
+                scaleY = Math.abs(scale[1]),
+                scaleZ = Math.abs(scale[flipXz ? 0 : 2]);
+
+            const colider = new StaticAABBColider(
+                [pos[0] - scaleX, pos[1] - scaleY, pos[2] - scaleZ],
+                [pos[0] + scaleX, pos[1] + scaleY, pos[2] + scaleZ],
+                layers
+            );
+            colider.name = gColiderNode.name ?? `S${sceneIndex}.${nodeIdx}`;
+            coliders.push(colider);
+        }
+        return coliders;
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    protected tryToPoi(node: TG.TNode): POI | undefined {
+        if (
+            !node.translation ||
+            !node.name ||
+            !node.extras ||
+            !node.extras.poi
+        ) {
+            return undefined;
+        }
+
+        return {
+            name: node.name,
+            position: node.translation,
+            props: node.extras,
+        };
+    }
+
+    public getPOIByName(name: string): POI | undefined {
+        const potentialPoiNode = this.json.nodes?.find((x) => x.name === name);
+        return potentialPoiNode && this.tryToPoi(potentialPoiNode);
+    }
+
+    public getAllPOIs(): POI[] {
+        return (
+            this.json.nodes
+                ?.filter((x) => !!x.extras?.poi)
+                .map((x) => this.tryToPoi(x))
+                .filter<POI>((x) => !!x) ?? []
+        );
     }
 }
