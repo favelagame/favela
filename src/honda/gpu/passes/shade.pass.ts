@@ -90,6 +90,7 @@ export class ShadePass implements IPass {
 
         const csys = Game.ecs.getSystem(CameraSystem);
         this.settings.set({
+            VInv: csys.viewMtxInv,
             VPInv: csys.viewProjMtxInv,
             camera: csys.viewMtx,
             nLights: Game.ecs.getSystem(LightSystem).nLights,

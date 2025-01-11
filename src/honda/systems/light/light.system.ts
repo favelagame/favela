@@ -121,8 +121,8 @@ export class LightSystem extends System {
                     mat4.perspective(
                         l.lightInfo.outerCone * 2,
                         1,
-                        0.0001,
-                        10,
+                        0.001,
+                        l.lightInfo.maxRange,
                         proj
                     );
                 }

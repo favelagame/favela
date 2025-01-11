@@ -1,6 +1,7 @@
 // she g on my buffer till i deffered renderer
 
 struct ShadeUniforms {
+    VInv: mat4x4f,
     VPInv: mat4x4f,
     camera: mat4x4f,
     nLights: u32,
@@ -146,8 +147,7 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
     let met = metRgh.r;
     let rgh = metRgh.g;
     let ems = textureLoad(gEms, fc, 0).rgb;
-    let V = normalize(uni.VPInv[3].xyz - pos);
-
+    let V = normalize(uni.VInv[3].xyz - pos);
     var lit = vec3f(0.0);
 
     // fries in bag
@@ -210,7 +210,7 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
         ));
     }
     // lit /= 50.0;
-    lit += bas; // very lazy ambient impl
+    lit += bas * 0.05; // very lazy ambient impl
 
     return vec4f(lit + ems, 1.0);
 }
