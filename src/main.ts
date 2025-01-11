@@ -14,6 +14,7 @@ import {
     MeshSystem,
     CameraSystem,
     LightSystem,
+    SoundSystem,
 } from "@/honda";
 import { perfRenderer } from "./honda/util/perf";
 import { setError, setStatus } from "./honda/util/status";
@@ -34,6 +35,7 @@ Game.ecs.addSystem(new MeshSystem());
 Game.ecs.addSystem(new CameraSystem());
 Game.ecs.addSystem(new LightSystem());
 Game.ecs.addSystem(new PhysicsSystem());
+Game.ecs.addSystem(new SoundSystem());
 
 const extras = await createScene();
 

@@ -1,5 +1,5 @@
 import { createTextureFromImages } from "webgpu-utils";
-import { Game, ScriptComponent } from "./honda";
+import { Game, ScriptComponent, SoundEmmiter, SoundSystem } from "./honda";
 import { SceneNode } from "./honda/core/node";
 import { CameraComponent } from "./honda/systems/camera";
 import { GltfBinary } from "./honda/util/gltf";
@@ -89,9 +89,17 @@ class PlayerMoveScript extends Script {
         this.node.components
             .filter((x) => x instanceof DynamicAABBColider)
             .forEach((x) => {
-                (x as DynamicAABBColider).forces[0] = moveVec[0];
-                (x as DynamicAABBColider).forces[2] = moveVec[2];
+                (x as DynamicAABBColider).forces[0] += moveVec[0];
+                (x as DynamicAABBColider).forces[2] += moveVec[2];
             });
+    }
+}
+
+class PosastMoveScript extends Script {
+    protected moveBaseVec = vec3.create(-1, 0, 0);
+
+    override update(): void {
+        this.node.transform.translation[0] += this.moveBaseVec[0] * 0.1;
     }
 }
 
@@ -102,9 +110,11 @@ export async function createScene() {
     const alienation = await GltfBinary.fromUrl("./Alienation.glb");
 
     const fakingPosastBrt = alienation.nodeConvert(0);
-    fakingPosastBrt.transform.scale.set([0.6, 0.6, 0.6]);
+    fakingPosastBrt.transform.scale.set([0.8, 0.8, 0.8]);
     fakingPosastBrt.transform.translation.set([8, 0, 0]);
     fakingPosastBrt.transform.update();
+    fakingPosastBrt.addComponent(new SoundEmmiter("beep", "Beep Sound", 0.5));
+    fakingPosastBrt.addComponent(new ScriptComponent(new PosastMoveScript()));
     Game.scene.addChild(fakingPosastBrt);
 
     console.log(gltfScene);
@@ -123,6 +133,10 @@ export async function createScene() {
         { mips: true }
     );
 
+    await Game.ecs.getSystem(SoundSystem).loadAudioFiles({
+        "beep": "audio/beep.mp3"
+    });
+
     const sc = new SceneNode();
     sc.name = "staticColiders";
 
@@ -139,6 +153,15 @@ export async function createScene() {
     camera.addComponent(new CameraComponent(70, 0.1, 32, "MainCamera"));
     camera.addComponent(new DynamicAABBColider([0, 15, 0], [0.5, 2, 0.5], 1));
     camera.addComponent(new ScriptComponent(new PlayerMoveScript()));
+
+    // play through components
+    fakingPosastBrt.components.filter((x) => x instanceof SoundEmmiter).forEach((x) => {
+        x.setLoop(true);
+        x.play();
+    });
+
+    // play throu system
+    // Game.ecs.getSystem(SoundSystem).playAudio("beep1", "beep", true);
 
     Game.scene.addChild(camera);
 
