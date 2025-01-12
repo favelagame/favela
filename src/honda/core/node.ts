@@ -106,11 +106,11 @@ export class SceneNode {
 
     public assertChildComponent<T extends IComponent>(
         ctor: new (...args: never) => T,
-        maxDepth: 127
+        maxDepth = 127
     ): T {
         return nn(
             this.findChild(
-                (x) => x.children.values().some((y) => y instanceof ctor),
+                (x) => x.components.values().some((y) => y instanceof ctor),
                 maxDepth
             )?.components.find((y) => y instanceof ctor),
             "child isn't"
