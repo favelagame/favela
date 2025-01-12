@@ -24,6 +24,8 @@ export async function createScene() {
     const sponzaScene = await GltfBinary.fromUrl("./SponzaScene.glb");
     const pickups = await GltfBinary.fromUrl("./pickups.glb");
 
+    document.querySelector("#game-ui")!.setAttribute("style", "opacity: 1");
+
     const skyTex = await createTextureFromImages(
         Game.gpu.device,
         [
@@ -42,6 +44,9 @@ export async function createScene() {
         footstepL: "audio/footstep_L.ogg",
         footstepR: "audio/footstep_R.ogg",
         pickup: "audio/equip.mp3",
+        gunClick: "audio/gun_click.ogg",
+        reload: "audio/reload.ogg",
+        gunShot: "audio/gun_shot.ogg",
     });
 
     {

@@ -49,7 +49,7 @@ export class Input {
     }
 
     protected onMouseUp(ev: MouseEvent) {
-        this.btnMap[`mouse${ev.button}`] = true;
+        this.btnMap[`mouse${ev.button}`] = false;
     }
 
     protected async lockPointer(unadjusted = true) {
@@ -76,7 +76,7 @@ export class Input {
         if (!this.pointerLocked) {
             this.lockPointer();
         }
-        this.btnMap[`mouse${ev.button}`] = false;
+        this.btnMap[`mouse${ev.button}`] = true;
     }
 
     protected onMouseMove(ev: MouseEvent) {
