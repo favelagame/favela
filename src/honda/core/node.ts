@@ -1,4 +1,3 @@
-import { mat4 } from "wgpu-matrix";
 import { Game } from "../state";
 import { IComponent } from "./ecs";
 import { Transform } from "./transform";
@@ -12,7 +11,12 @@ export class SceneNode {
     public dynamic = true;
     public components: IComponent[] = [];
 
-    protected _mat = mat4.create();
+    protected isNodeInScene(): boolean {
+        if ((this as SceneNode) == Game.scene) return true;
+        if (this.parent == Game.scene) return true;
+
+        return this.parent?.isNodeInScene() ?? false;
+    }
 
     public addChild(c: SceneNode) {
         if (c.parent) {
@@ -27,12 +31,29 @@ export class SceneNode {
             c.parent.removeChild(c);
         }
 
-        c.parent = this;
         this.children.add(c);
+        c.parent = this;
+        c.attachComponents();
+    }
+
+    protected detachComponents() {
+        if (!this.parent) return;
+        this._attached = false;
+        this.children.forEach((x) => x.detachComponents());
+        this.components.forEach((x) => Game.ecs.destroyComponent(this, x));
+    }
+
+    protected _attached = true;
+    protected attachComponents() {
+        if (this._attached) return;
+        this._attached = true;
+        this.children.forEach((x) => x.attachComponents());
+        this.components.forEach((x) => Game.ecs.registerComponent(this, x));
     }
 
     public removeChild(c: SceneNode) {
         if (this.children.delete(c)) {
+            c.detachComponents();
             c.parent = undefined;
         } else {
             // the show must go on
@@ -42,8 +63,14 @@ export class SceneNode {
     }
 
     public addComponent<T extends IComponent>(c: T) {
-        Game.ecs.registerComponent(this, c);
+        if (this.isNodeInScene()) Game.ecs.registerComponent(this, c);
+        else this._attached = false;
         this.components.push(c);
+    }
+
+    public removeComponent<T extends IComponent>(c: T) {
+        Game.ecs.destroyComponent(this, c);
+        this.components = this.components.filter((x) => x != c);
     }
 
     // Destroys self and all remaining children
