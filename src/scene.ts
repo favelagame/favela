@@ -17,7 +17,8 @@ import {
 } from "@/honda";
 import { nn } from "@/honda/util";
 
-import { PlayerMoveScript } from "./scripts/player/player-move.script";
+import { PlayerScript } from "./scripts/player.script";
+import { EnemyScript } from "./scripts/enemy.script";
 
 export async function createScene() {
     const croshair = new Image();
@@ -52,6 +53,7 @@ export async function createScene() {
         gunClick: "audio/gun_click.ogg",
         reload: "audio/reload.ogg",
         gunShot: "audio/gun_shot.ogg",
+        breathe: "audio/breathe.ogg",
     });
 
     {
@@ -65,33 +67,16 @@ export async function createScene() {
     }
 
     {
-        const fakingPosastBrt = nn(alienation.nodeConvert(0), "posast ni bla");
-        fakingPosastBrt.transform.scale.set([0.6, 0.6, 0.6]);
-        fakingPosastBrt.transform.translation.set(
-            sponzaScene.getPOIByName("EnemySpawn")!.position!
-        );
-        fakingPosastBrt.addComponent(
-            new DynamicAABBColider(
-                sponzaScene.getPOIByName("EnemySpawn")!.position!,
-                [0.5, 2, 0.5], //TODO: fix model offset
-                LAYER_ENEMY | LAYER_PHYSICS
-            )
-        );
-        fakingPosastBrt.transform.update();
-        Game.scene.addChild(fakingPosastBrt);
-    }
-
-    {
         const player = new SceneNode();
         player.name = "Player";
         player.addComponent(
             new DynamicAABBColider(
                 sponzaScene.getPOIByName("PlayerSpawn")!.position!,
-                [0.5, 2, 0.5],
+                [0.5, 1.75, 0.5],
                 1
             )
         );
-        player.addComponent(new ScriptComponent(new PlayerMoveScript()));
+        player.addComponent(new ScriptComponent(new PlayerScript()));
 
         const camera = new SceneNode();
         camera.name = "Camera";
@@ -117,6 +102,31 @@ export async function createScene() {
         player.addChild(ln);
 
         Game.scene.addChild(player);
+    }
+
+    {
+        const fakingPosastBrt = new SceneNode()
+        fakingPosastBrt.addComponent(
+            new DynamicAABBColider(
+                sponzaScene.getPOIByName("EnemySpawn")!.position!,
+                [0.3, 2, 0.3], //TODO: fix model offset
+                LAYER_ENEMY | LAYER_PHYSICS
+            )
+        );
+        fakingPosastBrt.addComponent(new ScriptComponent(new EnemyScript(100)));
+        fakingPosastBrt.transform.update();
+
+        const alienationN = nn(alienation.nodeConvert(0), "posast ni bla");
+        alienationN.transform.scale.set([0.6, 0.6, 0.6]);
+        alienationN.transform.translation.set(
+            sponzaScene.getPOIByName("EnemySpawn")!.position!
+        );
+        alienationN.transform.update();
+        alienationN.transform.translation.set([0, -1, 0]);
+        alienationN.transform.update();
+        fakingPosastBrt.addChild(alienationN);
+        
+        Game.scene.addChild(fakingPosastBrt);
     }
 
     {

@@ -26,16 +26,6 @@ interface IRayHit {
     rayExit: Vec3 | V3;
 }
 
-interface IRayHit {
-    t: number;
-
-    colider: AABB;
-    node: SceneNode;
-
-    rayEntry: Vec3 | V3;
-    rayExit: Vec3 | V3;
-}
-
 const GRAVITY: V3 = [0, -30, 0];
 
 function rover(mina: number, maxa: number, minb: number, maxb: number) {

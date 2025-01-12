@@ -13,8 +13,10 @@ export class ECS {
         for (const sys of this._systems) {
             if (component instanceof sys.componentType) {
                 sys.componentCreated(node, component);
+                return;
             }
         }
+        console.warn("Component wasnt matched by any systems: ", component);
     }
 
     public destroyComponent(node: SceneNode, component: IComponent) {

@@ -117,7 +117,7 @@ export class SceneNode {
         ) as T;
     }
 
-    public assertChildWithName(name: string, maxDepth: 127) {
+    public assertChildWithName(name: string, maxDepth = 127) {
         return nn(
             this.findChild((x) => x.name == name, maxDepth),
             "child isn't"
