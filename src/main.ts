@@ -15,12 +15,12 @@ import {
     CameraSystem,
     LightSystem,
     SoundSystem,
+    PhysicsSystem,
 } from "@/honda";
 import { perfRenderer } from "./honda/util/perf";
 import { setError, setStatus } from "./honda/util/status";
 
 import { createScene } from "./scene";
-import { PhysicsSystem } from "./honda/systems/physics/physics.system";
 
 const canvas = document.querySelector("canvas")!;
 try {

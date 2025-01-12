@@ -61,3 +61,15 @@ canvas {
     font-size: 1rem;
     outline: 1px solid white;
 }
+
+#crosshair {
+    position: absolute;
+    z-index: 1000;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    user-select: none;
+    width: 20px;
+    height: 20px;
+}

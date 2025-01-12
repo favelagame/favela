@@ -14,7 +14,7 @@ import { vec3 } from "wgpu-matrix";
 
 type V3 = [number, number, number];
 
-const GRAVITY: V3 = [0, -90, 0];
+const GRAVITY: V3 = [0, -30, 0];
 
 function rover(mina: number, maxa: number, minb: number, maxb: number) {
     return (

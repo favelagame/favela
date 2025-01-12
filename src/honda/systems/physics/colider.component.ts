@@ -39,7 +39,7 @@ export class StaticAABBColider extends Colider {
 export class DynamicAABBColider extends Colider {
     public velocity = [0, 0, 0];
     public forces = [0, 0, 0];
-    public inverseMass = 1;
+    public inverseMass = 2;
     public drag = 8;
 
     public min: V3 = [0, 0, 0];

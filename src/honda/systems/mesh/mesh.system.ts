@@ -34,6 +34,7 @@ export class MeshSystem extends System {
             console.warn("moved component to new node", comp, node);
         }
         this.components.set(comp, node);
+        console.log(node, comp);
     }
 
     public componentDestroyed(_: SceneNode, comp: MeshComponent) {
