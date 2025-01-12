@@ -8,7 +8,7 @@ import {
     SoundSystem,
     LightComponent,
     MeshComponent,
-    SceneNode
+    SceneNode,
 } from "@/honda";
 import { vec3, quat } from "wgpu-matrix";
 
@@ -34,7 +34,7 @@ export class PlayerMoveScript extends Script {
         this.colider = this.node.assertComponent(DynamicAABBColider);
         this.colider.detectLayers |= LAYER_QUERY | LAYER_PICKUP;
     }
-    
+
     protected stamina = 100000;
     protected maxStamina = 10000;
     protected staminaDrainJump = 20;
@@ -79,7 +79,7 @@ export class PlayerMoveScript extends Script {
                 (Game.input.btnMap["KeyS"] ? 1 : 0);
 
             jump = Game.input.btnMap["Space"];
-            
+
             this.pitch = clamp(
                 -PI_2,
                 this.pitch + Game.input.mouseDeltaY * -sens,
@@ -97,7 +97,11 @@ export class PlayerMoveScript extends Script {
 
         // Movement Logic
         const moveVec = vec3.create();
-        vec3.transformQuat(this.moveBaseVec, this.node.transform.rotation, moveVec);
+        vec3.transformQuat(
+            this.moveBaseVec,
+            this.node.transform.rotation,
+            moveVec
+        );
         vec3.normalize(moveVec, moveVec);
 
         const speedMultiplier = boost && this.stamina > 0 ? 20 : 15;
@@ -112,12 +116,17 @@ export class PlayerMoveScript extends Script {
         this.colider.forces[2] += moveVec[2];
 
         // Jumping Logic
-        if (jump && !this.isJumping && this.colider.onFloor && this.stamina >= this.staminaDrainJump) {
+        if (
+            jump &&
+            !this.isJumping &&
+            this.colider.onFloor &&
+            this.stamina >= this.staminaDrainJump
+        ) {
             this.isJumping = true;
             this.stamina -= this.staminaDrainJump;
         }
 
-        if (this.isJumping && this.jumpTime < 0.1 ) {
+        if (this.isJumping && this.jumpTime < 0.1) {
             this.colider.forces[1] += this.jumpForce;
             this.jumpTime += Game.deltaTime;
         }
@@ -131,12 +140,20 @@ export class PlayerMoveScript extends Script {
         if (this.colider.forces[0] !== 0 || this.colider.forces[2] !== 0) {
             if (this.elapsedFoot > (boost ? 0.3 : 0.4)) {
                 if (this.foot) {
-                    if (!Game.ecs.getSystem(SoundSystem).isPlaying("footstepR")) {
-                        Game.ecs.getSystem(SoundSystem).playAudio("footstepR", false, 1, "footstepR");
+                    if (
+                        !Game.ecs.getSystem(SoundSystem).isPlaying("footstepR")
+                    ) {
+                        Game.ecs
+                            .getSystem(SoundSystem)
+                            .playAudio("footstepR", false, 1, "footstepR");
                     }
                 } else {
-                    if (!Game.ecs.getSystem(SoundSystem).isPlaying("footstepL")) {
-                        Game.ecs.getSystem(SoundSystem).playAudio("footstepL", false, 1, "footstepL");
+                    if (
+                        !Game.ecs.getSystem(SoundSystem).isPlaying("footstepL")
+                    ) {
+                        Game.ecs
+                            .getSystem(SoundSystem)
+                            .playAudio("footstepL", false, 1, "footstepL");
                     }
                 }
                 this.foot = !this.foot;
@@ -151,39 +168,74 @@ export class PlayerMoveScript extends Script {
 
         // Stamina Regeneration
         if (!boost && !jump) {
-            this.stamina = Math.min(this.stamina + this.staminaRegenRate * Game.deltaTime, this.maxStamina);
+            this.stamina = Math.min(
+                this.stamina + this.staminaRegenRate * Game.deltaTime,
+                this.maxStamina
+            );
         }
     }
 
     override lateUpdate(): void {
-        for (const [,ci] of this.colider.collisions) {
+        for (const [, ci] of this.colider.collisions) {
             if (ci.colider.onLayers & LAYER_PICKUP) {
                 Game.ecs.getSystem(SoundSystem).playAudio("pickup", false, 1);
-                
-                console.log(ci.node.name);
+
+                console.log("Picked up", ci.node.name);
                 switch (ci.node.name) {
                     case "PickupLight": {
                         const lightNode = new SceneNode();
                         lightNode.name = "PlayerLight";
-                        lightNode.transform.translation.set([0, 0, 1]);
-                        // lightNode.transform.rotation.set([0, -0.03, 0, 1]);
-                        lightNode.transform.scale.set([0.05, 0.05, 0.05]);
+                        lightNode.transform.translation.set([
+                            -0.13, -0.15, -0.2,
+                        ]);
+                        quat.fromEuler(
+                            -Math.PI / 2 + 0.2,
+                            0,
+                            -0.15,
+                            "xyz",
+                            lightNode.transform.rotation
+                        );
+                        lightNode.transform.scale.set([0.025, 0.025, 0.025]);
                         lightNode.transform.update();
-                        const lightMesh = ci.node.assertComponent(MeshComponent);
-                        lightNode.removeComponent(lightMesh);
+                        const lightMesh =
+                            ci.node.assertComponent(MeshComponent);
+                        ci.node.removeComponent(lightMesh);
                         lightNode.addComponent(lightMesh);
 
                         this.node.addChild(lightNode);
-                        
-                        this.node.assertChildComponent(LightComponent).lightInfo.intensity = 300;
+
+                        this.node.assertChildComponent(
+                            LightComponent //magneti
+                        ).lightInfo.intensity = 300; // zlt bom ceu
+
+                        break;
+                    }
+
+                    case "PickupPistol": {
+                        const pistolNode = new SceneNode();
+                        pistolNode.name = "PlayerPistol";
+                        pistolNode.transform.translation.set([
+                            0.2, -0.2, -0.25,
+                        ]);
+                        quat.fromEuler(
+                            0,
+                            0,
+                            -0,
+                            "xyz",
+                            pistolNode.transform.rotation
+                        );
+                        pistolNode.transform.scale.set([0.025, 0.025, 0.025]);
+                        pistolNode.transform.update();
+                        const pistolMesh =
+                            ci.node.assertComponent(MeshComponent);
+                        ci.node.removeComponent(pistolMesh);
+                        pistolNode.addComponent(pistolMesh);
+                        this.node.addChild(pistolNode);
 
                         break;
                     }
                 }
                 ci.node.parent?.removeChild(ci.node);
-
-                console.log(Game.scene.tree()); 
-
             }
         }
     }

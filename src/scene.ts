@@ -1,27 +1,18 @@
 import { createTextureFromImages } from "webgpu-utils";
 import { nn } from "@/honda/util";
-import { Game, LightComponent, ScriptComponent, SoundEmmiter, SoundSystem } from "./honda";
+import { Game, LightComponent, ScriptComponent, SoundSystem } from "./honda";
 import { SceneNode } from "./honda/core/node";
 import { CameraComponent } from "./honda/systems/camera";
 import { GltfBinary } from "./honda/util/gltf";
 import { quat, vec3 } from "wgpu-matrix";
 import { PlayerMoveScript } from "./scripts/player/player-move.script";
 import {
-    Script,
     DynamicAABBColider,
     LAYER_ENEMY,
     LAYER_PHYSICS,
     LAYER_PICKUP,
     StaticAABBColider,
 } from "@/honda";
-
-class PosastMoveScript extends Script {
-    protected moveBaseVec = vec3.create(-1, 0, 0);
-
-    override update(): void {
-        this.node.transform.translation[0] += this.moveBaseVec[0] * 0.01;
-    }
-}
 
 export async function createScene() {
     const croshair = new Image();
@@ -94,14 +85,12 @@ export async function createScene() {
 
         const camera = new SceneNode();
         camera.name = "Camera";
-        camera.transform.translation.set([0, 0, 2]);
-        camera.transform.update();
         camera.addComponent(new CameraComponent(70, 0.1, 32, "MainCamera"));
         player.addChild(camera);
 
         const ln = new SceneNode();
         ln.name = "lightholder";
-        ln.transform.translation.set([-0.3, -0.2, -0.1]);
+        ln.transform.translation.set([0, 0, -0.1]);
         ln.transform.rotation.set([0, -0.03, 0, 1]);
         ln.transform.update();
         ln.addComponent(
@@ -109,7 +98,7 @@ export async function createScene() {
                 castShadows: true,
                 color: [1, 1, 1],
                 type: "spot",
-                intensity: 0, // zlt bom ceu
+                intensity: 0,
                 innerCone: 0.3,
                 outerCone: 0.5,
                 maxRange: 15,
