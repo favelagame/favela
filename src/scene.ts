@@ -1,24 +1,23 @@
+import { quat, vec3 } from "wgpu-matrix";
 import { createTextureFromImages } from "webgpu-utils";
-import { nn } from "@/honda/util";
 import {
     Game,
-    LightComponent,
     NavSystem,
-    ScriptComponent,
     SoundSystem,
-} from "./honda";
-import { SceneNode } from "./honda/core/node";
-import { CameraComponent } from "./honda/systems/camera";
-import { GltfBinary } from "./honda/util/gltf";
-import { quat, vec3 } from "wgpu-matrix";
-import { PlayerMoveScript } from "./scripts/player/player-move.script";
-import {
+    LightComponent,
+    ScriptComponent,
+    SceneNode,
+    CameraComponent,
+    GltfBinary,
     DynamicAABBColider,
     LAYER_ENEMY,
     LAYER_PHYSICS,
     LAYER_PICKUP,
     StaticAABBColider,
 } from "@/honda";
+import { nn } from "@/honda/util";
+
+import { PlayerMoveScript } from "./scripts/player/player-move.script";
 
 export async function createScene() {
     const croshair = new Image();
@@ -26,11 +25,11 @@ export async function createScene() {
     croshair.id = "crosshair";
     document.querySelector("body")!.appendChild(croshair);
 
+    document.querySelector("#game-ui")!.setAttribute("style", "opacity: 1");
+
     const alienation = await GltfBinary.fromUrl("./Alienation.glb");
     const sponzaScene = await GltfBinary.fromUrl("./SponzaScene.glb");
     const pickups = await GltfBinary.fromUrl("./pickups.glb");
-
-    document.querySelector("#game-ui")!.setAttribute("style", "opacity: 1");
 
     const skyTex = await createTextureFromImages(
         Game.gpu.device,

@@ -166,7 +166,7 @@ export class SoundSystem extends System {
         this.activeSources.delete(audioId);
     }
 
-    public playComponentAudio(component: SoundEmmiter) {        
+    protected playComponentAudio(component: SoundEmmiter) {        
         const buffer = this.audioBuffers.get(component.soundKey);
         if (!buffer) {
             console.warn(`Audio buffer not found: ${component.soundKey}`);
@@ -200,8 +200,8 @@ export class SoundSystem extends System {
         panner.coneInnerAngle = 360;
         panner.distanceModel = "inverse";
         panner.refDistance = 1;
-        panner.rolloffFactor = 50;
-        panner.maxDistance = 100;
+        panner.rolloffFactor = 1;
+        panner.maxDistance = 200;
         this.activeComponentPanners.set(component, panner);
 
         const gain = this.audioContext.createGain();
@@ -212,7 +212,7 @@ export class SoundSystem extends System {
         source.start(0);
     }
 
-    public stopComponentAudio(component: SoundEmmiter) {
+    protected stopComponentAudio(component: SoundEmmiter) {
         const source = this.activeComponentSources.get(component);
         if (!source) {
             return;
