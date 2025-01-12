@@ -96,5 +96,19 @@ setInterval(
     500
 );
 
-requestAnimationFrame(frame);
-Game.time = performance.now() / 1000; //get inital timestamp so delta isnt broken
+document.addEventListener("keypress", (e) => {
+    if (e.code === "KeyP" ) {
+        document.querySelector("#perf")!.classList.toggle("hidden");
+        document.querySelector("muigui-element")!.classList.toggle("hidden");
+    }
+});
+
+document.querySelector("muigui-element")!.classList.add("hidden");
+document.querySelector("#perf")!.classList.toggle("hidden");
+
+const play = () => {
+    document.querySelector(".menu")!.classList.add("hidden");
+    requestAnimationFrame(frame);
+    Game.time = performance.now() / 1000; //get inital timestamp so delta isnt broken
+}
+document.querySelector("#play")!.addEventListener("click", play);

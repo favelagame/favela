@@ -25,3 +25,12 @@ export const Game = {
 
 //@ts-expect-error expose state to the console
 window.Game = Game;
+
+//@ts-expect-error expose state to the console
+window.finish = (win: boolean) => {
+    if (win) {
+        document.querySelector(".win")?.classList.remove("hidden");
+    } else {
+        document.querySelector(".lose")?.classList.remove("hidden");
+    }
+}

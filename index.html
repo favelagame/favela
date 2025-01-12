@@ -7,34 +7,70 @@
         <title>Favela</title>
     </head>
     <body>
-        <canvas></canvas>
-        <div id="game-ui" class="game-ui">
-            <div class="health">
-                <p class="label">Health</p>
-                <p id="health"></p>
-                <p class="label">Stamina</p>
-                <p id="stamina"></p>
+        <div class="menu">
+            <h1>Favela</h1>
+            <button id="play">Play</button>
+            <div class="settings">
+                <h2>Settings</h2>
+                <div class="options">
+                    <div class="low">
+                        <p>Low</p>
+                        <input type="radio" name="quality" value="low" checked />
+                    </div>
+                    <div class="medium">
+                        <p>Medium</p>
+                        <input type="radio" name="quality" value="medium" />
+                    </div>  
+                    <div class="high">
+                        <p>High</p>
+                        <input type="radio" name="quality" value="high" />
+                    </div>
+                </div>
             </div>
-            <div class="ammo">
-                <p class="label">Ammo</p>
-                <p id="clipAmmo"></p>
-                <p id="extraAmmo"></p>
+            <div class="help">
+                <h2>Controls</h2>
+                <p>WASD - Move</p>
+                <p>Mouse - Look</p>
+                <p>E - Interact with technology</p>
+                <p>P - Stats and Graphics controls</p>
             </div>
         </div>
-        <div id="perf">
-            <pre>
-FPS:   <span id="fps">  0.0</span> (<span id="mspf">   0.00</span> ms) E: <span id="ents">   0</span>
+        <div class="lose hidden">
+            <h1>You lose!</h1>
+        </div>
+        <div class="win hidden">
+            <h1>You win!</h1>
+        </div>
+        <div class="game">
+            <canvas></canvas>
+            <div id="game-ui" class="game-ui">
+                <div class="health">
+                    <p class="label">Health</p>
+                    <p id="health"></p>
+                    <p class="label">Stamina</p>
+                    <p id="stamina"></p>
+                </div>
+                <div class="ammo">
+                    <p class="label">Ammo</p>
+                    <p id="clipAmmo"></p>
+                    <p id="extraAmmo"></p>
+                </div>
+            </div>
+            <div id="perf">
+                <pre>
+FPS:       <span id="fps">  0.0</span> (<span id="mspf">   0.00</span> ms) E: <span id="ents">   0</span>
 
 ----------------{ GPU }----------------
 </pre>
-            <pre id="measured"></pre>
-            <pre>
-                
+                <pre id="measured"></pre>
+                <pre>
+
 ----------------{ GPU }----------------</pre>
-            <pre id="measured-gpu"></pre>
+                <pre id="measured-gpu"></pre>
+            </div>
+            <pre id="error" class="hide"></pre>
+            <pre id="status">Loading...</pre>
         </div>
-        <pre id="error" class="hide"></pre>
-        <pre id="status">cakam da grize asfalt honda</pre>
         <script type="module" src="/src/main.ts"></script>
     </body>
 </html>
