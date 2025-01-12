@@ -9,6 +9,8 @@ import {
     LightComponent,
     MeshComponent,
     SceneNode,
+    CameraSystem,
+    SoundEmmiter,
 } from "@/honda";
 import { vec3, quat } from "wgpu-matrix";
 
@@ -27,6 +29,8 @@ export class PlayerMoveScript extends Script {
 
     protected foot = false;
     protected elapsedFoot = 0;
+    protected leftFootstepEmitter: SceneNode | null = null;
+    protected rightFootstepEmitter: SceneNode | null = null;
 
     protected colider!: DynamicAABBColider;
 
@@ -43,16 +47,45 @@ export class PlayerMoveScript extends Script {
     protected health = 100;
     protected maxHealth = 100;
 
-    protected pistol = false;
     protected clipSize = 11;
-    protected ammo = 111111;
-    protected extraAmmo = 11;
+    protected ammo = 11;
+    protected extraAmmo = 23;
     protected shooting = false;
+    protected reloadTime = 2;
+    protected reloading = false;
+    protected reloadProgress = 0;
+    protected gunRecoilOffset = vec3.create(0, 0, 0);
+    protected gunRecoilRotation = vec3.create(0, 0, 0);
+    protected recoilRecoverySpeed = 10;
+    protected maxRecoilPositionZ = -0.2;
+    protected maxRecoilRotationX = 0.5;
 
+    protected bobbingAmplitude = 0.01;
+    protected bobbingFrequency = 6;
+    protected bobbingOffset = 0;
+
+    protected pistolNode: SceneNode | null = null;
+    protected flashlightNode: SceneNode | null = null;
 
     public onAttach(): void {
         this.colider = this.node.assertComponent(DynamicAABBColider);
         this.colider.detectLayers |= LAYER_QUERY | LAYER_PICKUP;
+
+        this.leftFootstepEmitter = new SceneNode();
+        this.leftFootstepEmitter.name = "LeftFootstepEmitter";
+        this.leftFootstepEmitter.transform.translation.set([0, -1, 0]);
+        this.leftFootstepEmitter.addComponent(
+            new SoundEmmiter("footstepL", "footstepL", 1)
+        );
+        this.node.addChild(this.leftFootstepEmitter);
+
+        this.rightFootstepEmitter = new SceneNode();
+        this.rightFootstepEmitter.name = "RightFootstepEmitter";
+        this.rightFootstepEmitter.transform.translation.set([0, -1, 0]);
+        this.rightFootstepEmitter.addComponent(
+            new SoundEmmiter("footstepR", "footstepR", 1)
+        );
+        this.node.addChild(this.rightFootstepEmitter);
     }
 
     override update(): void {
@@ -91,7 +124,7 @@ export class PlayerMoveScript extends Script {
 
             jump = Game.input.btnMap["Space"];
 
-            if (Game.input.btnMap["mouse0"] && this.pistol && !this.shooting) {
+            if (Game.input.btnMap["mouse0"] && this.pistolNode && !this.shooting && !this.reloading) {
                 this.shooting = true;
                 this.fire();
             }
@@ -100,6 +133,17 @@ export class PlayerMoveScript extends Script {
                 this.shooting = false;
             }
 
+            if (Game.input.btnMap["KeyR"] && this.pistolNode && this.ammo < this.clipSize && this.extraAmmo > 0 && !this.reloading) {
+                this.reloading = true;
+                Game.ecs.getSystem(SoundSystem).playAudio("reload", false, 0.5);
+            }
+
+            if (this.reloading) {
+                this.reloadProgress += Game.deltaTime;
+                if (this.reloadProgress >= this.reloadTime) {
+                    this.reload();
+                }
+            }
 
             this.pitch = clamp(
                 -PI_2,
@@ -161,32 +205,76 @@ export class PlayerMoveScript extends Script {
             this.jumpTime = 0;
         }
 
+        // Recoil Logic
+        if (this.pistolNode) {
+            // Smoothly recover position and rotation using vec3 lerp
+            vec3.lerp(
+                this.gunRecoilOffset,
+                [0, 0, 0],
+                this.recoilRecoverySpeed * Game.deltaTime,
+                this.gunRecoilOffset
+            );
+            vec3.lerp(
+                this.gunRecoilRotation,
+                [0, 0, 0],
+                this.recoilRecoverySpeed * Game.deltaTime,
+                this.gunRecoilRotation
+            );
+
+            quat.fromEuler(
+                this.gunRecoilRotation[0],
+                0,
+                0,
+                "xyz",
+                this.pistolNode.transform.rotation
+            );
+
+            this.pistolNode.transform.update();
+            
+        }
+
+        // Camera Bobbing
+        const cameraNode = Game.ecs.getSystem(CameraSystem).getActiveCameraNode();
+        if (cameraNode) {
+            if ((this.colider.forces[0] !== 0 || this.colider.forces[2] !== 0) && this.colider.onFloor) {
+                this.bobbingOffset += Game.deltaTime * (this.isRunning ? 2 : 1) * this.bobbingFrequency;
+                const bobbingY = Math.sin(this.bobbingOffset) * this.bobbingAmplitude;
+                cameraNode.transform.translation[1] = bobbingY;
+                const bobbingZ = Math.cos(this.bobbingOffset) * this.bobbingAmplitude;
+                cameraNode.transform.translation[2] = bobbingZ;
+            } else {
+                this.bobbingOffset = 0;
+                cameraNode.transform.translation[1] = 0;
+                cameraNode.transform.translation[2] = 0;
+            }
+            cameraNode.transform.update();
+        }
+
+
         // Footstep Sounds
+        const left = this.leftFootstepEmitter!.assertComponent(SoundEmmiter);
+        const right = this.rightFootstepEmitter!.assertComponent(SoundEmmiter);
         if ((this.colider.forces[0] !== 0 || this.colider.forces[2] !== 0) && this.colider.onFloor) {
             if (this.elapsedFoot > (this.isRunning ? 0.2 : 0.4)) {
                 if (this.foot) {
                     if (
-                        !Game.ecs.getSystem(SoundSystem).isPlaying("footstepR")
+                        !right.isPlaying()
                     ) {
-                        Game.ecs
-                            .getSystem(SoundSystem)
-                            .playAudio("footstepR", false, 1, "footstepR");
+                        right.play();
                     }
                 } else {
                     if (
-                        !Game.ecs.getSystem(SoundSystem).isPlaying("footstepL")
+                        !left.isPlaying()
                     ) {
-                        Game.ecs
-                            .getSystem(SoundSystem)
-                            .playAudio("footstepL", false, 1, "footstepL");
+                        left.play();
                     }
                 }
                 this.foot = !this.foot;
                 this.elapsedFoot = 0;
             }
         } else {
-            Game.ecs.getSystem(SoundSystem).stopAudio("footstepR");
-            Game.ecs.getSystem(SoundSystem).stopAudio("footstepL");
+            left.stop();
+            right.stop();
         }
 
         // DOM
@@ -206,11 +294,11 @@ export class PlayerMoveScript extends Script {
         }
 
         if (clipAmmoCounter) {
-            clipAmmoCounter.innerText = `${Math.max(0, Math.floor(this.ammo))}`;
+            clipAmmoCounter.innerText = `${this.pistolNode ? Math.max(0, Math.floor(this.ammo)) : 0}`;
         }
 
         if (ammoCounter) {
-            ammoCounter.innerText = `${Math.max(0, Math.floor(this.extraAmmo))}`;
+            ammoCounter.innerText = `${this.pistolNode ? Math.max(0, Math.floor(this.extraAmmo)) : 0}`;
         }
 
         this.elapsedFoot += Game.deltaTime;
@@ -232,9 +320,9 @@ export class PlayerMoveScript extends Script {
                 console.log("Picked up", ci.node.name);
                 switch (ci.node.name) {
                     case "PickupLight": {
-                        const lightNode = new SceneNode();
-                        lightNode.name = "PlayerLight";
-                        lightNode.transform.translation.set([
+                        this.flashlightNode = new SceneNode();
+                        this.flashlightNode.name = "PlayerLight";
+                        this.flashlightNode.transform.translation.set([
                             -0.13, -0.15, -0.2,
                         ]);
                         quat.fromEuler(
@@ -242,16 +330,16 @@ export class PlayerMoveScript extends Script {
                             0,
                             -0.15,
                             "xyz",
-                            lightNode.transform.rotation
+                            this.flashlightNode.transform.rotation
                         );
-                        lightNode.transform.scale.set([0.025, 0.025, 0.025]);
-                        lightNode.transform.update();
+                        this.flashlightNode.transform.scale.set([0.025, 0.025, 0.025]);
+                        this.flashlightNode.transform.update();
                         const lightMesh =
                             ci.node.assertComponent(MeshComponent);
                         ci.node.removeComponent(lightMesh);
-                        lightNode.addComponent(lightMesh);
+                        this.flashlightNode.addComponent(lightMesh);
 
-                        this.node.addChild(lightNode);
+                        this.node.addChild(this.flashlightNode);
 
                         this.node.assertChildComponent(
                             LightComponent //magneti
@@ -261,9 +349,9 @@ export class PlayerMoveScript extends Script {
                     }
 
                     case "PickupPistol": {
-                        const pistolNode = new SceneNode();
-                        pistolNode.name = "PlayerPistol";
-                        pistolNode.transform.translation.set([
+                        this.pistolNode = new SceneNode();
+                        this.pistolNode.name = "PlayerPistol";
+                        this.pistolNode.transform.translation.set([
                             0.2, -0.2, -0.25,
                         ]);
                         quat.fromEuler(
@@ -271,17 +359,15 @@ export class PlayerMoveScript extends Script {
                             0,
                             -0,
                             "xyz",
-                            pistolNode.transform.rotation
+                            this.pistolNode.transform.rotation
                         );
-                        pistolNode.transform.scale.set([0.025, 0.025, 0.025]);
-                        pistolNode.transform.update();
+                        this.pistolNode.transform.scale.set([0.025, 0.025, 0.025]);
+                        this.pistolNode.transform.update();
                         const pistolMesh =
                             ci.node.assertComponent(MeshComponent);
                         ci.node.removeComponent(pistolMesh);
-                        pistolNode.addComponent(pistolMesh);
-                        this.node.addChild(pistolNode);
-
-                        this.pistol = true;
+                        this.pistolNode.addComponent(pistolMesh);
+                        this.node.addChild(this.pistolNode);
 
                         break;
                     }
@@ -293,11 +379,22 @@ export class PlayerMoveScript extends Script {
 
     public fire(): void {
         if (this.ammo > 0) {
-            Game.ecs.getSystem(SoundSystem).playAudio("gunShot", false, 0.2);
+            Game.ecs.getSystem(SoundSystem).playAudio("gunShot", false, 0.1);
             this.ammo--;
+
+            this.gunRecoilOffset[2] = this.maxRecoilPositionZ;
+            this.gunRecoilRotation[0] = this.maxRecoilRotationX;
         }
         else {
-            Game.ecs.getSystem(SoundSystem).playAudio("gunClick", false, 0.3);
+            Game.ecs.getSystem(SoundSystem).playAudio("gunClick", false, 0.2);
         }
+    }
+
+    public reload(): void {
+        this.reloadProgress = 0;
+        this.reloading = false;
+        const ammoNeeded = this.clipSize - this.ammo;
+        this.ammo += Math.min(ammoNeeded, this.extraAmmo);
+        this.extraAmmo -= Math.min(ammoNeeded, this.extraAmmo);
     }
 }

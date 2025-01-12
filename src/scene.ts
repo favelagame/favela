@@ -1,6 +1,6 @@
 import { createTextureFromImages } from "webgpu-utils";
 import { nn } from "@/honda/util";
-import { Game, LightComponent, ScriptComponent, SoundSystem } from "./honda";
+import { Game, LightComponent, ScriptComponent, SoundEmmiter, SoundSystem } from "./honda";
 import { SceneNode } from "./honda/core/node";
 import { CameraComponent } from "./honda/systems/camera";
 import { GltfBinary } from "./honda/util/gltf";
@@ -20,11 +20,12 @@ export async function createScene() {
     croshair.id = "crosshair";
     document.querySelector("body")!.appendChild(croshair);
 
+    document.querySelector("#game-ui")!.setAttribute("style", "opacity: 1");
+
     const alienation = await GltfBinary.fromUrl("./Alienation.glb");
     const sponzaScene = await GltfBinary.fromUrl("./SponzaScene.glb");
     const pickups = await GltfBinary.fromUrl("./pickups.glb");
 
-    document.querySelector("#game-ui")!.setAttribute("style", "opacity: 1");
 
     const skyTex = await createTextureFromImages(
         Game.gpu.device,
@@ -90,7 +91,7 @@ export async function createScene() {
 
         const camera = new SceneNode();
         camera.name = "Camera";
-        camera.addComponent(new CameraComponent(70, 0.1, 32, "MainCamera"));
+        camera.addComponent(new CameraComponent(70, 0.1, 32, "MainCamera"));        
         player.addChild(camera);
 
         const ln = new SceneNode();
