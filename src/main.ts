@@ -21,6 +21,7 @@ import { setError, setStatus } from "./honda/util/status";
 
 import { createScene } from "./scene";
 import { PhysicsSystem } from "./honda/systems/physics/physics.system";
+import { NavSystem } from "./honda/systems/nav";
 
 const canvas = document.querySelector("canvas")!;
 try {
@@ -30,6 +31,7 @@ try {
     throw e;
 }
 Game.input = new Input(canvas);
+Game.ecs.addSystem(new NavSystem());
 Game.ecs.addSystem(new ScriptSystem());
 Game.ecs.addSystem(new MeshSystem());
 Game.ecs.addSystem(new CameraSystem());
@@ -54,7 +56,7 @@ Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
 
 const MAX_STEP = 0.1; // Atleast 10 updates per second
 
-function frame(t: number) {
+function frame() {
     Game.perf.startFrame();
     Game.input.frame();
 

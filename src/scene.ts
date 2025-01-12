@@ -1,9 +1,9 @@
 import { createTextureFromImages } from "webgpu-utils";
 import { Game, LightComponent, ScriptComponent, SoundSystem } from "./honda";
 import { SceneNode } from "./honda/core/node";
-import { CameraComponent } from "./honda/systems/camera";
+import { CameraComponent, CameraSystem } from "./honda/systems/camera";
 import { GltfBinary } from "./honda/util/gltf";
-import { quat, vec3 } from "wgpu-matrix";
+import { mat4, quat, vec3, vec4 } from "wgpu-matrix";
 import { Script } from "@/honda";
 import { clamp, nn, PI_2 } from "./honda/util";
 import {
@@ -14,6 +14,8 @@ import {
     LAYER_QUERY,
     StaticAABBColider,
 } from "./honda/systems/physics/colider.component";
+import { PhysicsSystem } from "./honda/systems/physics/physics.system";
+import { NavSystem } from "./honda/systems/nav";
 
 // basic deadzone
 function dz(x: number) {
@@ -22,6 +24,8 @@ function dz(x: number) {
 
 const sens = 0.0009;
 const sensGamepad = 0.05;
+
+const forward = vec4.create(0, 0, -1, 0);
 
 class PlayerMoveScript extends Script {
     protected moveBaseVec = vec3.create(0, 0, 0);
@@ -32,15 +36,34 @@ class PlayerMoveScript extends Script {
     protected elapsedFoot = 0;
 
     protected colider!: DynamicAABBColider;
+    protected phys!: PhysicsSystem;
+    protected cam!: CameraSystem;
 
     public onAttach(): void {
         this.colider = this.node.assertComponent(DynamicAABBColider);
         this.colider.detectLayers |= LAYER_QUERY | LAYER_PICKUP;
+        this.phys = Game.ecs.getSystem(PhysicsSystem);
+        this.cam = Game.ecs.getSystem(CameraSystem);
     }
+
+    protected lastRaycast = 0;
 
     override update(): void {
         let boost = false;
         const g = Game.input.activeGamepad;
+
+        if (Game.input.btnMap["mouse0"] && this.lastRaycast + 1 < Game.time) {
+            this.lastRaycast = Game.time;
+
+            console.log(
+                this.phys.raycast(
+                    mat4.getTranslation(this.node.transform.$glbMtx),
+                    vec4.transformMat4(forward, this.node.transform.$glbMtx),
+                    0xff,
+                    this.colider
+                )
+            );
+        }
 
         if (g) {
             boost = g.buttons[0].pressed;
@@ -141,14 +164,6 @@ class PlayerMoveScript extends Script {
         for (const c of this.colider.collisions) {
             console.log("coliding", c);
         }
-    }
-}
-
-class PosastMoveScript extends Script {
-    protected moveBaseVec = vec3.create(-1, 0, 0);
-
-    override update(): void {
-        this.node.transform.translation[0] += this.moveBaseVec[0] * 0.01;
     }
 }
 
@@ -278,6 +293,14 @@ export async function createScene() {
         Game.scene.addChild(pickup);
     }
 
+    try {
+        const navmesh = sponzaScene.getNavmesh();
+        Game.ecs.getSystem(NavSystem).setNavmesh(navmesh);
+    } catch (e) {
+        console.warn("navmesh load failed", e);
+    }
+
     console.log(Game.scene.tree());
+
     return { skyTex };
 }

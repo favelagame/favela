@@ -7,12 +7,24 @@ import {
 } from "./colider.component";
 import { SceneNode } from "@/honda/core/node";
 import { Game } from "@/honda/state";
-import { vec3 } from "wgpu-matrix";
+import { Vec3, vec3 } from "wgpu-matrix";
 
 // ta fajl je kinda in shambles, for some reason tuki useam number[3] namest F32array
 // shoutout Ziga Lesar, shoutout random tip iz stack overflowa, shoutout the one book
 
 type V3 = [number, number, number];
+
+type AABB = StaticAABBColider | DynamicAABBColider;
+
+interface IRayHit {
+    t: number;
+
+    colider: AABB;
+    node: SceneNode;
+
+    rayEntry: Vec3 | V3;
+    rayExit: Vec3 | V3;
+}
 
 const GRAVITY: V3 = [0, -90, 0];
 
@@ -22,8 +34,6 @@ function rover(mina: number, maxa: number, minb: number, maxb: number) {
         Math.min(mina, maxa) <= Math.max(minb, maxb)
     );
 }
-
-type AABB = StaticAABBColider | DynamicAABBColider;
 
 function aabbToAabb(a: AABB, b: AABB) {
     return (
@@ -76,21 +86,21 @@ function aaabResolve(a: AABB, b: AABB): V3 {
 export class PhysicsSystem extends System {
     public componentType = Colider;
 
-    protected allColiders = new Map<SceneNode, Colider>();
+    protected allColiders = new Set<AABB>();
     protected reverse = new Map<Colider, SceneNode>();
     protected staticColiders = new Set<StaticAABBColider>();
     protected dynamicColiders = new Set<DynamicAABBColider>();
 
     public componentCreated(nd: SceneNode, co: Colider): void {
-        this.allColiders.set(nd, co);
+        this.allColiders.add(co as AABB);
         this.reverse.set(co, nd);
 
         if (co.isStatic) this.staticColiders.add(co as StaticAABBColider);
         else this.dynamicColiders.add(co as DynamicAABBColider);
     }
 
-    public componentDestroyed(nd: SceneNode, co: Colider): void {
-        this.allColiders.delete(nd);
+    public componentDestroyed(_: SceneNode, co: Colider): void {
+        this.allColiders.delete(co as StaticAABBColider);
         this.reverse.delete(co);
         this.staticColiders.delete(co as StaticAABBColider);
         this.dynamicColiders.delete(co as DynamicAABBColider);
@@ -203,5 +213,53 @@ export class PhysicsSystem extends System {
             t.translation.set(dyn.position);
             t.update();
         }
+    }
+
+    public raycast(
+        from: Vec3 | V3,
+        dir: Vec3 | V3,
+        layers: number,
+        ignore?: AABB
+    ): IRayHit[] {
+        const invDir = [1 / dir[0], 1 / dir[1], 1 / dir[2]];
+
+        const aabss = this.allColiders
+            .values()
+            .filter((x) => (x.onLayers & layers) > 0 && x != ignore);
+
+        const hits = [] as IRayHit[];
+
+        for (const aabb of aabss) {
+            let minT = 0,
+                maxT = Infinity;
+
+            const axt = (aabb.min[0] - from[0]) * invDir[0];
+            const bxt = (aabb.max[0] - from[0]) * invDir[0];
+            minT = Math.max(minT, Math.min(axt, bxt));
+            maxT = Math.max(axt, bxt);
+            if (maxT < minT) continue;
+
+            const ayt = (aabb.min[1] - from[1]) * invDir[1];
+            const byt = (aabb.max[1] - from[1]) * invDir[1];
+            minT = Math.max(minT, Math.min(ayt, byt));
+            maxT = Math.min(maxT, Math.max(ayt, byt));
+            if (maxT < minT) continue;
+
+            const azt = (aabb.min[2] - from[2]) * invDir[2];
+            const bzt = (aabb.max[2] - from[2]) * invDir[2];
+            minT = Math.max(minT, Math.min(azt, bzt));
+            maxT = Math.min(maxT, Math.max(azt, bzt));
+            if (maxT < minT) continue;
+
+            hits.push({
+                colider: aabb,
+                node: this.reverse.get(aabb)!,
+                t: minT,
+                rayEntry: vec3.addScaled(from, dir, minT),
+                rayExit: vec3.addScaled(from, dir, maxT),
+            });
+        }
+
+        return hits.sort((a, b) => a.t - b.t);
     }
 }

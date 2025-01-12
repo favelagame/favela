@@ -700,9 +700,10 @@ export class GltfBinary {
         if (gNode.matrix) console.warn("glTF Matrices unsupported");
 
         if (gNode.extras) {
-            // Don't load coliders and POIs into scene
+            // Don't load non-visual objects into scene
             if (gNode.extras["poi"]) return undefined;
             if (gNode.extras["colider"]) return undefined;
+            if (gNode.extras["navmesh"]) return undefined;
         }
 
         // transform
@@ -893,5 +894,61 @@ export class GltfBinary {
                 .map((x) => this.tryToPoi(x))
                 .filter<POI>((x) => !!x) ?? []
         );
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    protected convertNavmesh(
+        idxAcc: FavelaAccesor<Uint16Array, "SCALAR">,
+        posAcc: FavelaAccesor<Float32Array, "VEC3">
+    ): [number, number][][] {
+        const idx = idxAcc.accessor,
+            pos = posAcc.accessor;
+
+        const polygons = [] as [number, number][][];
+
+        for (let i = 0; i + 2 < idx.length; i += 3) {
+            const ia = idx[i],
+                ib = idx[i + 1],
+                ic = idx[i + 2];
+
+            polygons.push([
+                [pos[3 * ia + 0], pos[3 * ia + 2]],
+                [pos[3 * ib + 0], pos[3 * ib + 2]],
+                [pos[3 * ic + 0], pos[3 * ic + 2]],
+            ]);
+        }
+
+        return polygons;
+    }
+
+    public getNavmesh(scene: number = 0) {
+        const navMesh = nn(
+            this.json.meshes?.[
+                this.json.scenes?.[0]?.nodes
+                    ?.map((x) => this.json?.nodes?.[x])
+                    .filter((x) => x)
+                    .find((x) => x?.extras?.["navmesh"])?.mesh ?? -1
+            ],
+            `No navmesh nodes for scene ${scene}`
+        );
+
+        console.assert(
+            navMesh.primitives.length == 1,
+            "MULTIPLE PRIMITIVES IN NAVMESH!"
+        );
+        const prim = navMesh.primitives[0];
+
+        const idxAccessor = this.getAccessorAndAssertType(
+                nn(prim.indices, "namvesh indices missing"),
+                "SCALAR",
+                Uint16Array
+            ),
+            posAccessor = this.getAccessorAndAssertType(
+                nn(prim.attributes["POSITION"], "namvesh indices missing"),
+                "VEC3",
+                Float32Array
+            );
+
+        return this.convertNavmesh(idxAccessor, posAccessor);
     }
 }

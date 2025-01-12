@@ -27,7 +27,7 @@ export class SoundSystem extends System {
         this.components.set(component, node);
     }
 
-    public componentDestroyed(node: SceneNode, component: SoundEmmiter) {
+    public componentDestroyed(_: SceneNode, component: SoundEmmiter) {
         const source = this.activeComponentSources.get(component);
         if (source) {
             source.stop();
