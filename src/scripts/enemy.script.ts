@@ -1,4 +1,10 @@
-import { DynamicAABBColider, Game, NavSystem, SceneNode, Script } from "@/honda";
+import {
+    DynamicAABBColider,
+    Game,
+    NavSystem,
+    SceneNode,
+    Script,
+} from "@/honda";
 import { Point } from "@/honda/lib/nav2d";
 import { quat } from "wgpu-matrix";
 
@@ -12,7 +18,7 @@ export class EnemyScript extends Script {
     protected _path: number[][] = [];
     protected _activePoint: number[] | null = null;
     protected _previousFramePos: number[] = [0, 0, 0];
-    protected _speed: number = 260;
+    protected _speed: number = 15;
 
     public name: string;
 
@@ -29,7 +35,6 @@ export class EnemyScript extends Script {
     }
 
     override update(): void {
-        console.log(this._health);
         if (this._health <= 0) {
             this.node.destroy();
             return;
@@ -37,11 +42,17 @@ export class EnemyScript extends Script {
 
         // Path recalculation logic
         if (this._pathRecomputeTime > 0.1) {
-            const enemyPos = this.node.assertComponent(DynamicAABBColider).position;
-            const playerPos = this._player!.assertComponent(DynamicAABBColider).position;
+            const enemyPos =
+                this.node.assertComponent(DynamicAABBColider).position;
+            const playerPos =
+                this._player!.assertComponent(DynamicAABBColider).position;
 
             // Get path and map points correctly
-            const path = this._navSys!.getPath([enemyPos[0], enemyPos[2]], [playerPos[0], playerPos[2]]) ?? [];
+            const path =
+                this._navSys!.getPath(
+                    [enemyPos[0], enemyPos[2]],
+                    [playerPos[0], playerPos[2]]
+                ) ?? [];
             //@ts-expect-error ermm
             this._path = path.map((point: Point) => [point.x, point.y]);
 
@@ -57,13 +68,19 @@ export class EnemyScript extends Script {
             const distance = Math.sqrt(dx ** 2 + dz ** 2);
 
             if (distance > 0.1) {
-                const forceX = (dx / distance) * this._speed * Game.deltaTime;
-                const forceZ = (dz / distance) * this._speed * Game.deltaTime;
+                const forceX = (dx / distance) * this._speed;
+                const forceZ = (dz / distance) * this._speed;
                 collider.forces[0] = forceX;
                 collider.forces[2] = forceZ;
 
                 const targetAngle = Math.atan2(dx, dz);
-                quat.fromEuler(0, targetAngle, 0, "xyz", this.node.transform.rotation);
+                quat.fromEuler(
+                    0,
+                    targetAngle,
+                    0,
+                    "xyz",
+                    this.node.transform.rotation
+                );
                 this.node.transform.update();
             } else {
                 this._activePoint = this._path.shift() || null;

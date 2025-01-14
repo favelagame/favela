@@ -15,10 +15,10 @@ import {
     LAYER_PICKUP,
     StaticAABBColider,
 } from "@/honda";
-import { nn } from "@/honda/util";
 
 import { PlayerScript } from "./scripts/player.script";
 import { EnemyScript } from "./scripts/enemy.script";
+import { nn } from "./honda/util";
 
 export async function createScene() {
     const croshair = new Image();
@@ -28,9 +28,10 @@ export async function createScene() {
 
     document.querySelector("#game-ui")!.setAttribute("style", "opacity: 1");
 
-    const alienation = await GltfBinary.fromUrl("./Alienation.glb");
-    const sponzaScene = await GltfBinary.fromUrl("./SponzaScene.glb");
+    // const main = await GltfBinary.fromUrl("./levelzero.glb");
+    const main = await GltfBinary.fromUrl("./levelzero_w.glb");
     const pickups = await GltfBinary.fromUrl("./pickups.glb");
+    const alienation = await GltfBinary.fromUrl("./Alienation.glb");
 
     const skyTex = await createTextureFromImages(
         Game.gpu.device,
@@ -54,29 +55,58 @@ export async function createScene() {
         reload: "audio/reload.ogg",
         gunShot: "audio/gun_shot.ogg",
         breathe: "audio/breathe.ogg",
+        door: "audio/door.mp3"
     });
 
     {
-        Game.scene.addChild(sponzaScene.sceneAsNode());
+        Game.scene.addChild(main.sceneAsNode());
         const coliders = new SceneNode();
         coliders.name = "StaticColiders";
-        sponzaScene
-            .getStaticColiders()
-            .forEach((x) => coliders.addComponent(x));
+        main.getStaticColiders().forEach((x) => coliders.addComponent(x));
         Game.scene.addChild(coliders);
     }
+
+    const pois = main.getAllPOIs().filter((x) => x.props["monster"]);
+    console.log(pois);
+
+    const makeEnemys = () => {
+        for (const poi of pois) {
+            const fakingPosastBrt = new SceneNode();
+            fakingPosastBrt.name = `Mnstr:${name}`;
+            fakingPosastBrt.addComponent(
+                new DynamicAABBColider(
+                    poi.position,
+                    [0.3, 2, 0.3],
+                    LAYER_ENEMY | LAYER_PHYSICS
+                )
+            );
+            fakingPosastBrt.addComponent(
+                new ScriptComponent(new EnemyScript(100))
+            );
+            fakingPosastBrt.transform.update();
+
+            const alienationN = nn(alienation.nodeConvert(0), "posast ni bla");
+            alienationN.transform.scale.set([0.6, 0.6, 0.6]);
+            alienationN.transform.update();
+            alienationN.transform.translation.set([0, -1, 0]);
+            alienationN.transform.update();
+            fakingPosastBrt.addChild(alienationN);
+
+            Game.scene.addChild(fakingPosastBrt);
+        }
+    };
 
     {
         const player = new SceneNode();
         player.name = "Player";
         player.addComponent(
             new DynamicAABBColider(
-                sponzaScene.getPOIByName("PlayerSpawn")!.position!,
+                main.getPOIByName("PlayerSpawn")!.position!,
                 [0.5, 1.75, 0.5],
                 1
             )
         );
-        player.addComponent(new ScriptComponent(new PlayerScript()));
+        player.addComponent(new ScriptComponent(new PlayerScript(makeEnemys)));
 
         const camera = new SceneNode();
         camera.name = "Camera";
@@ -96,7 +126,7 @@ export async function createScene() {
                 intensity: 0,
                 innerCone: 0.3,
                 outerCone: 0.5,
-                maxRange: 15,
+                maxRange: 24,
             })
         );
         player.addChild(ln);
@@ -105,32 +135,7 @@ export async function createScene() {
     }
 
     {
-        const fakingPosastBrt = new SceneNode()
-        fakingPosastBrt.addComponent(
-            new DynamicAABBColider(
-                sponzaScene.getPOIByName("EnemySpawn")!.position!,
-                [0.3, 2, 0.3], //TODO: fix model offset
-                LAYER_ENEMY | LAYER_PHYSICS
-            )
-        );
-        fakingPosastBrt.addComponent(new ScriptComponent(new EnemyScript(100)));
-        fakingPosastBrt.transform.update();
-
-        const alienationN = nn(alienation.nodeConvert(0), "posast ni bla");
-        alienationN.transform.scale.set([0.6, 0.6, 0.6]);
-        alienationN.transform.translation.set(
-            sponzaScene.getPOIByName("EnemySpawn")!.position!
-        );
-        alienationN.transform.update();
-        alienationN.transform.translation.set([0, -1, 0]);
-        alienationN.transform.update();
-        fakingPosastBrt.addChild(alienationN);
-        
-        Game.scene.addChild(fakingPosastBrt);
-    }
-
-    {
-        const pickupPoi = sponzaScene.getPOIByName("PickupLight")!;
+        const pickupPoi = main.getPOIByName("PickupLight")!;
         const pickup = pickups.nodeConvert(0)!;
         pickup.name = "PickupLight";
         pickup.transform.translation.set(pickupPoi.position);
@@ -155,7 +160,7 @@ export async function createScene() {
     }
 
     {
-        const pickupPoi = sponzaScene.getPOIByName("PickupPistol")!;
+        const pickupPoi = main.getPOIByName("PickupPistol")!;
         const pickup = pickups.nodeConvert(1)!;
         pickup.name = "PickupPistol";
         pickup.transform.translation.set(pickupPoi.position);
@@ -174,7 +179,7 @@ export async function createScene() {
     }
 
     try {
-        const navmesh = sponzaScene.getNavmesh();
+        const navmesh = main.getNavmesh();
         Game.ecs.getSystem(NavSystem).setNavmesh(navmesh);
     } catch (e) {
         console.warn("navmesh load failed", e);

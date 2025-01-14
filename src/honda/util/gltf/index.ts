@@ -384,7 +384,10 @@ export class GltfBinary {
         if (!gTexture) throw new Error("Texture index OOB");
 
         const source =
-            gTexture?.extensions?.EXT_texture_webp?.source ?? gTexture.source;
+            gTexture?.extensions?.EXT_texture_webp?.source ??
+            //@ts-expect-error asdsad
+            gTexture?.extensions?.EXT_texture_avif?.source ??
+            gTexture.source;
 
         if (source === undefined) {
             throw new Error("No supported textures found.");
@@ -406,7 +409,10 @@ export class GltfBinary {
         if (!gTexture) throw new Error("Texture index OOB");
 
         const source =
-            gTexture?.extensions?.EXT_texture_webp?.source ?? gTexture.source;
+            gTexture?.extensions?.EXT_texture_webp?.source ??
+            //@ts-expect-error fuck
+            gTexture?.extensions?.EXT_texture_avif?.source ??
+            gTexture.source;
 
         if (source === undefined) {
             throw new Error("No supported textures found.");
@@ -820,7 +826,7 @@ export class GltfBinary {
                     const bit = GltfBinary.COLIDER_LAYER_MAP[key] ?? 0;
                     if (bit == 0) console.warn(`Unknown colider layer: ${key}`);
 
-                    return p || bit;
+                    return p | bit;
                 }, 0);
 
             const pos = gColiderNode.translation;

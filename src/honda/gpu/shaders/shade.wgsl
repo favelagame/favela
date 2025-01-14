@@ -212,5 +212,5 @@ fn fs(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4f {
     // lit /= 50.0;
     lit += bas * 0.05; // very lazy ambient impl
 
-    return vec4f(lit + ems, 1.0);
+    return vec4f(lit + 5 * ems, 1.0);
 }

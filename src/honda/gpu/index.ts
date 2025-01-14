@@ -120,6 +120,8 @@ export class WebGpu {
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
         });
 
+        this.renderScale = Game.flags.has("rsHalf") ? 0.5 : 1;
+
         /*
             FIXME:  Safari (matter reference) doesn't support this.
             TODO:   a lah nekdo figure-a out ta scaling,

@@ -3,7 +3,6 @@ import {
     WebGpu,
     Game,
     ScriptSystem,
-    IPass,
     PostprocessPass,
     SSAOPass,
     SkyPass,
@@ -22,37 +21,7 @@ import { perfRenderer } from "@/honda/util/perf";
 import { setError, setStatus } from "@/honda/util/status";
 
 import { createScene } from "./scene";
-
-const canvas = document.querySelector("canvas")!;
-try {
-    Game.gpu = await WebGpu.obtainForCanvas(canvas);
-} catch (e) {
-    setError((e as object).toString());
-    throw e;
-}
-Game.input = new Input(canvas);
-Game.ecs.addSystem(new NavSystem());
-Game.ecs.addSystem(new ScriptSystem());
-Game.ecs.addSystem(new MeshSystem());
-Game.ecs.addSystem(new CameraSystem());
-Game.ecs.addSystem(new LightSystem());
-Game.ecs.addSystem(new PhysicsSystem());
-Game.ecs.addSystem(new SoundSystem());
-
-const extras = await createScene();
-
-const passes: IPass[] = [
-    new GBufferPass(),
-    new SSAOPass(),
-    new ShadowMapPass(),
-    new SkyPass(extras.skyTex), //TODO(mbabnik): move this to scene
-    new ShadePass(),
-    new BloomPass(),
-    new PostprocessPass(),
-];
-
-setStatus(undefined);
-Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
+import { Flags } from "./honda/util/flags";
 
 const MAX_STEP = 0.1; // Atleast 10 updates per second
 
@@ -74,7 +43,7 @@ function frame() {
     Game.ecs.lateUpdate();
     Game.perf.measure("gpu");
     Game.gpu.frameStart();
-    passes.forEach((x) => x.apply());
+    Game.passes.forEach((x) => x.apply());
 
     Game.input.endFrame();
     Game.gpu.endFrame();
@@ -96,5 +65,62 @@ setInterval(
     500
 );
 
-requestAnimationFrame(frame);
-Game.time = performance.now() / 1000; //get inital timestamp so delta isnt broken
+document.addEventListener("keypress", (e) => {
+    if (e.code === "KeyP") {
+        document.querySelector("#perf")!.classList.toggle("hidden");
+        document.querySelector("muigui-element")!.classList.toggle("hidden");
+    }
+});
+
+document.querySelector("muigui-element")!.classList.add("hidden");
+document.querySelector("#perf")!.classList.toggle("hidden");
+
+const play = async () => {
+    const selected = document.querySelector<HTMLInputElement>("input:checked")!
+        .value as "low" | "medium" | "high";
+
+    Game.flags = new Set<Flags>(
+        (
+            {
+                low: ["rsHalf", "noSSAO", "shadowLow"],
+                medium: ["shadowLow"],
+                high: [],
+            } satisfies Record<string, Flags[]>
+        )[selected]
+    );
+    const canvas = document.querySelector("canvas")!;
+    try {
+        Game.gpu = await WebGpu.obtainForCanvas(canvas);
+    } catch (e) {
+        setError((e as object).toString());
+        throw e;
+    }
+    Game.input = new Input(canvas);
+    Game.ecs.addSystem(new NavSystem());
+    Game.ecs.addSystem(new ScriptSystem());
+    Game.ecs.addSystem(new MeshSystem());
+    Game.ecs.addSystem(new CameraSystem());
+    Game.ecs.addSystem(new LightSystem());
+    Game.ecs.addSystem(new PhysicsSystem());
+    Game.ecs.addSystem(new SoundSystem());
+
+    const extras = await createScene();
+
+    Game.passes = [
+        new GBufferPass(),
+        new SSAOPass(),
+        new ShadowMapPass(),
+        new SkyPass(extras.skyTex),
+        new ShadePass(),
+        new BloomPass(),
+        new PostprocessPass(),
+    ];
+
+    setStatus(undefined);
+    Game.cmdEncoder = Game.gpu.device.createCommandEncoder();
+
+    document.querySelector(".menu")!.classList.add("hidden");
+    Game.time = performance.now() / 1000; //get inital timestamp so delta isnt broken
+    requestAnimationFrame(frame);
+};
+document.querySelector("#play")!.addEventListener("click", play);

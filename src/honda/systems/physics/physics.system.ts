@@ -140,12 +140,27 @@ export class PhysicsSystem extends System {
 
         const collision: [DynamicAABBColider, AABB][] = [];
 
-        // get all collisions
+        // this shit is fucking terrible
         for (const dc of this.dynamicColiders) {
-            //TODO: later
-            // for (const ot of this.dynamicColiders) {
-            //     if (dc == ot) return;
-            // }
+            for (const ot of this.dynamicColiders) {
+                if (ot == dc) continue;
+                if (!aabbToAabb(dc, ot)) continue;
+
+                if (ot.detectLayers & dc.onLayers) {
+                    ot.collisions.set(dc, {
+                        colider: dc,
+                        node: this.reverse.get(dc)!,
+                    });
+                }
+
+                if (dc.detectLayers & ot.onLayers) {
+                    dc.collisions.set(ot, {
+                        colider: ot,
+                        node: this.reverse.get(ot)!,
+                    });
+                }
+                collision.push([dc, ot]);
+            }
 
             for (const other of this.staticColiders) {
                 if (!aabbToAabb(dc, other)) continue;
@@ -156,7 +171,6 @@ export class PhysicsSystem extends System {
                         node: this.reverse.get(dc)!,
                     });
                 }
-
                 if (dc.detectLayers & other.onLayers) {
                     dc.collisions.set(other, {
                         colider: other,
@@ -173,35 +187,31 @@ export class PhysicsSystem extends System {
                 const mv = aaabResolve(dyn, otr);
                 if (mv[1] > 0) dyn.onFloor = true;
 
-                if (otr.isStatic) {
-                    dyn.moveBy(...mv);
-                    // mv is vector that stops us from coliding
-                    // update dyn.velocity to stop it in the collision direction
+                dyn.moveBy(...mv);
+                // mv is vector that stops us from coliding
+                // update dyn.velocity to stop it in the collision direction
 
-                    // Normalize the collision vector to get the normal
-                    const mvLength = Math.sqrt(
-                        mv[0] * mv[0] + mv[1] * mv[1] + mv[2] * mv[2]
-                    );
-                    const normal = [
-                        mv[0] / mvLength,
-                        mv[1] / mvLength,
-                        mv[2] / mvLength,
-                    ];
+                // Normalize the collision vector to get the normal
+                const mvLength = Math.sqrt(
+                    mv[0] * mv[0] + mv[1] * mv[1] + mv[2] * mv[2]
+                );
+                const normal = [
+                    mv[0] / mvLength,
+                    mv[1] / mvLength,
+                    mv[2] / mvLength,
+                ];
 
-                    // Project velocity onto the normal
-                    const vRelDotN =
-                        dyn.velocity[0] * normal[0] +
-                        dyn.velocity[1] * normal[1] +
-                        dyn.velocity[2] * normal[2];
+                // Project velocity onto the normal
+                const vRelDotN =
+                    dyn.velocity[0] * normal[0] +
+                    dyn.velocity[1] * normal[1] +
+                    dyn.velocity[2] * normal[2];
 
-                    // If moving into the static object, stop in that direction
-                    if (vRelDotN < 0) {
-                        dyn.velocity[0] -= vRelDotN * normal[0];
-                        dyn.velocity[1] -= vRelDotN * normal[1];
-                        dyn.velocity[2] -= vRelDotN * normal[2];
-                    }
-                } else {
-                    //TODO: later
+                // If moving into the static object, stop in that direction
+                if (vRelDotN < 0) {
+                    dyn.velocity[0] -= vRelDotN * normal[0];
+                    dyn.velocity[1] -= vRelDotN * normal[1];
+                    dyn.velocity[2] -= vRelDotN * normal[2];
                 }
             }
         }

@@ -1,11 +1,12 @@
 # favela
 
-its all in le head
-7x udar strela
+## Running statically
 
-## dev
+The built version of the game is in the dist directory. Any webserver should work.
 
-```bash
-npm i
-npm run dev
-```
+## Developing and Building
+
+- Install deps: `npm i`
+- Develop: `npm run dev` 
+- Build: `npm run build`
+- Host build locally: `npm run preview` 

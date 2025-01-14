@@ -15,8 +15,9 @@ import {
     LAYER_PHYSICS,
     LAYER_ENEMY,
     ScriptComponent,
+    LAYER_INTERACT,
 } from "@/honda";
-import { vec3, quat } from "wgpu-matrix";
+import { vec3, quat, mat4, vec4 } from "wgpu-matrix";
 import { EnemyScript } from "./enemy.script";
 
 // basic deadzone
@@ -65,6 +66,7 @@ export class PlayerScript extends Script {
     protected _maxRecoilPositionZ = -0.2;
     protected _maxRecoilRotationX = 0.5;
     protected _flashDecayFactor = 1333;
+    protected _stage2 = false;
 
     protected _bobbingAmplitude = 0.01;
     protected _bobbingFrequency = 6;
@@ -73,9 +75,13 @@ export class PlayerScript extends Script {
     protected _pistolNode: SceneNode | null = null;
     protected _flashlightNode: SceneNode | null = null;
 
+    constructor(protected cb: () => void) {
+        super();
+    }
+
     public onAttach(): void {
         this._colider = this.node.assertComponent(DynamicAABBColider);
-        this._colider.detectLayers |= LAYER_QUERY | LAYER_PICKUP;
+        this._colider.detectLayers |= LAYER_QUERY | LAYER_PICKUP | LAYER_ENEMY;
 
         this._leftFootstepEmitter = new SceneNode();
         this._leftFootstepEmitter.name = "LeftFootstepEmitter";
@@ -130,11 +136,23 @@ export class PlayerScript extends Script {
 
             jump = Game.input.btnMap["Space"];
 
-            if (this._pistolNode && this._pistolNode.assertChildComponent(LightComponent).lightInfo.intensity > 0) {
-                this._pistolNode.assertChildComponent(LightComponent).lightInfo.intensity -= Game.deltaTime * this._flashDecayFactor;
+            if (
+                this._pistolNode &&
+                this._pistolNode.assertChildComponent(LightComponent).lightInfo
+                    .intensity > 0
+            ) {
+                this._pistolNode.assertChildComponent(
+                    LightComponent
+                ).lightInfo.intensity -=
+                    Game.deltaTime * this._flashDecayFactor;
             }
 
-            if (Game.input.btnMap["mouse0"] && this._pistolNode && !this._shooting && !this._reloading) {
+            if (
+                Game.input.btnMap["mouse0"] &&
+                this._pistolNode &&
+                !this._shooting &&
+                !this._reloading
+            ) {
                 this._shooting = true; // uncomment to enable auto fire
                 this.fire();
             }
@@ -143,7 +161,13 @@ export class PlayerScript extends Script {
                 this._shooting = false;
             }
 
-            if (Game.input.btnMap["KeyR"] && this._pistolNode && this._ammo < this._clipSize && this._extraAmmo > 0 && !this._reloading) {
+            if (
+                Game.input.btnMap["KeyR"] &&
+                this._pistolNode &&
+                this._ammo < this._clipSize &&
+                this._extraAmmo > 0 &&
+                !this._reloading
+            ) {
                 this._reloading = true;
                 Game.ecs.getSystem(SoundSystem).playAudio("reload", false, 0.5);
             }
@@ -179,23 +203,24 @@ export class PlayerScript extends Script {
         );
         vec3.normalize(moveVec, moveVec);
 
-        const speedMultiplier = boost && this._stamina > 0 ? 360 : 280;
+        const speedMultiplier = boost && this._stamina > 0 ? 24 : 13;
         if (boost && this._stamina > 0) {
             this._stamina -= this._staminaDrainSprint * Game.deltaTime;
             this._isRunning = true;
 
             if (this._stamina <= 0) {
                 if (!Game.ecs.getSystem(SoundSystem).isPlaying("breathe")) {
-                    Game.ecs.getSystem(SoundSystem).playAudio("breathe", false, 1, "breathe");
+                    Game.ecs
+                        .getSystem(SoundSystem)
+                        .playAudio("breathe", false, 1, "breathe");
                 }
             }
-        }
-        else {
+        } else {
             this._isRunning = false;
         }
 
-        moveVec[0] *= speedMultiplier * Game.deltaTime;
-        moveVec[2] *= speedMultiplier * Game.deltaTime;
+        moveVec[0] *= speedMultiplier;
+        moveVec[2] *= speedMultiplier;
 
         this._colider.forces[0] += moveVec[0];
         this._colider.forces[2] += moveVec[2];
@@ -246,17 +271,27 @@ export class PlayerScript extends Script {
             );
 
             this._pistolNode.transform.update();
-            
         }
 
         // Camera Bobbing
-        const cameraNode = Game.ecs.getSystem(CameraSystem).getActiveCameraNode();
+        const cameraNode = Game.ecs
+            .getSystem(CameraSystem)
+            .getActiveCameraNode();
         if (cameraNode) {
-            if ((this._colider.forces[0] !== 0 || this._colider.forces[2] !== 0) && this._colider.onFloor) {
-                this._bobbingOffset += Game.deltaTime * (this._isRunning ? 2 : 1) * this._bobbingFrequency;
-                const bobbingY = Math.sin(this._bobbingOffset) * this._bobbingAmplitude;
+            if (
+                (this._colider.forces[0] !== 0 ||
+                    this._colider.forces[2] !== 0) &&
+                this._colider.onFloor
+            ) {
+                this._bobbingOffset +=
+                    Game.deltaTime *
+                    (this._isRunning ? 2 : 1) *
+                    this._bobbingFrequency;
+                const bobbingY =
+                    Math.sin(this._bobbingOffset) * this._bobbingAmplitude;
                 cameraNode.transform.translation[1] = bobbingY;
-                const bobbingZ = Math.cos(this._bobbingOffset) * this._bobbingAmplitude;
+                const bobbingZ =
+                    Math.cos(this._bobbingOffset) * this._bobbingAmplitude;
                 cameraNode.transform.translation[2] = bobbingZ;
             } else {
                 this._bobbingOffset = 0;
@@ -266,22 +301,20 @@ export class PlayerScript extends Script {
             cameraNode.transform.update();
         }
 
-
         // Footstep Sounds
         const left = this._leftFootstepEmitter!.assertComponent(SoundEmmiter);
         const right = this._rightFootstepEmitter!.assertComponent(SoundEmmiter);
-        if ((this._colider.forces[0] !== 0 || this._colider.forces[2] !== 0) && this._colider.onFloor) {
+        if (
+            (this._colider.forces[0] !== 0 || this._colider.forces[2] !== 0) &&
+            this._colider.onFloor
+        ) {
             if (this._elapsedFoot > (this._isRunning ? 0.2 : 0.4)) {
                 if (this._foot) {
-                    if (
-                        !right.isPlaying()
-                    ) {
+                    if (!right.isPlaying()) {
                         right.play();
                     }
                 } else {
-                    if (
-                        !left.isPlaying()
-                    ) {
+                    if (!left.isPlaying()) {
                         left.play();
                     }
                 }
@@ -299,22 +332,30 @@ export class PlayerScript extends Script {
         const clipAmmoCounter = document.getElementById("clipAmmo");
         const ammoCounter = document.getElementById("extraAmmo");
 
-
-
         if (staminaCounter) {
-            staminaCounter.innerText = `${Math.max(0, Math.floor(this._stamina))}`;
+            staminaCounter.innerText = `${Math.max(
+                0,
+                Math.floor(this._stamina)
+            )}`;
         }
 
         if (healthCounter) {
-            healthCounter.innerText = `${Math.max(0, Math.floor(this._health))}`;
+            healthCounter.innerText = `${Math.max(
+                0,
+                Math.floor(this._health)
+            )}`;
         }
 
         if (clipAmmoCounter) {
-            clipAmmoCounter.innerText = `${this._pistolNode ? Math.max(0, Math.floor(this._ammo)) : 0}`;
+            clipAmmoCounter.innerText = `${
+                this._pistolNode ? Math.max(0, Math.floor(this._ammo)) : 0
+            }`;
         }
 
         if (ammoCounter) {
-            ammoCounter.innerText = `${this._pistolNode ? Math.max(0, Math.floor(this._extraAmmo)) : 0}`;
+            ammoCounter.innerText = `${
+                this._pistolNode ? Math.max(0, Math.floor(this._extraAmmo)) : 0
+            }`;
         }
 
         this._elapsedFoot += Game.deltaTime;
@@ -325,6 +366,41 @@ export class PlayerScript extends Script {
                 this._stamina + this._staminaRegenRate * Game.deltaTime,
                 this._maxStamina
             );
+        }
+
+        if (Game.input.btnMap["KeyE"]) {
+            const forward = vec4.create(0, 0, -1, 0);
+            const hits = Game.ecs
+                .getSystem(PhysicsSystem)
+                .raycast(
+                    mat4.getTranslation(this.node.transform.$glbMtx),
+                    vec4.transformMat4(forward, this.node.transform.$glbMtx),
+                    LAYER_INTERACT,
+                    this._colider
+                );
+
+            const hit = hits[0];
+            if (hit) {
+                if (hit.t < 1 && !this._stage2) {
+                    //this is terrible, the player controller should not handle scene changes and enemy spawning
+                    this._stage2 = true; 
+
+                    const sc = Game.scene.assertChildWithName("StaticColiders");
+                    const scc = sc.components.find((x) =>
+                        x.name?.endsWith("Door")
+                    )!;
+                    console.log(scc);
+                    sc.removeComponent(scc);
+                    console.log(Game.scene.tree());
+
+                    const dv = Game.scene.assertChildWithName("L1_DoorMesh");
+                    dv.parent!.removeChild(dv!);
+
+                    Game.ecs.getSystem(SoundSystem).playAudio("door", false, 0.1);
+
+                    this.cb();
+                }
+            }
         }
     }
 
@@ -348,7 +424,9 @@ export class PlayerScript extends Script {
                             "xyz",
                             this._flashlightNode.transform.rotation
                         );
-                        this._flashlightNode.transform.scale.set([0.025, 0.025, 0.025]);
+                        this._flashlightNode.transform.scale.set([
+                            0.025, 0.025, 0.025,
+                        ]);
                         this._flashlightNode.transform.update();
                         const lightMesh =
                             ci.node.assertComponent(MeshComponent);
@@ -377,7 +455,9 @@ export class PlayerScript extends Script {
                             "xyz",
                             this._pistolNode.transform.rotation
                         );
-                        this._pistolNode.transform.scale.set([0.025, 0.025, 0.025]);
+                        this._pistolNode.transform.scale.set([
+                            0.025, 0.025, 0.025,
+                        ]);
                         this._pistolNode.transform.update();
                         const pistolMesh =
                             ci.node.assertComponent(MeshComponent);
@@ -405,37 +485,59 @@ export class PlayerScript extends Script {
                 }
                 ci.node.parent?.removeChild(ci.node);
             }
+
+            if (ci.colider.onLayers & LAYER_ENEMY) {
+                this._health -= 1; // TODO: decouple from fps
+                if (this._health == 0) {
+                    setTimeout(() => {
+                        Game.finish(false);
+                    }, 1);
+                    throw new Error("Die");
+                }
+            }
+
+            if (ci.colider.onLayers & LAYER_QUERY) {
+                if (ci.colider.name == "L1_Goal") {
+                    setTimeout(() => {
+                        Game.finish(true);
+                    }, 1);
+                    throw new Error("Win");
+                }
+            }
         }
     }
 
     public fire(): void {
         if (this._ammo > 0) {
             Game.ecs.getSystem(SoundSystem).playAudio("gunShot", false, 0.1);
-            this._pistolNode!.assertChildComponent(LightComponent).lightInfo.intensity = 50;
+            this._pistolNode!.assertChildComponent(
+                LightComponent
+            ).lightInfo.intensity = 50;
             this._ammo--;
 
             this._gunRecoilOffset[2] = this._maxRecoilPositionZ;
             this._gunRecoilRotation[0] = this._maxRecoilRotationX;
-            
-            const from = Game.ecs.getSystem(CameraSystem).getActiveCameraNode()!.transform.translation;
-            const forward = vec3.create(0, 0, -1);
-            vec3.transformQuat(forward, this.node.transform.rotation, forward);
-            vec3.normalize(forward, forward);
 
-            const hits = Game.ecs.getSystem(PhysicsSystem).raycast(from, forward, LAYER_PHYSICS | LAYER_ENEMY);
+            const forward = vec4.create(0, 0, -1, 0);
+            const hits = Game.ecs
+                .getSystem(PhysicsSystem)
+                .raycast(
+                    mat4.getTranslation(this.node.transform.$glbMtx),
+                    vec4.transformMat4(forward, this.node.transform.$glbMtx),
+                    LAYER_PHYSICS | LAYER_ENEMY,
+                    this._colider
+                );
 
+            console.log(hits.map((x) => x.colider.name + ":" + x.node.name));
+            const hit = hits[0];
 
-            console.log(hits)
-
-            if (hits.length > 0) {
-                const hit = hits[0];
-                if (hit.node.name === "EnemyScript") {
-                    const enemy = hit.node.parent!.assertComponent(ScriptComponent).script as EnemyScript;
-                    enemy.damage(10);
-                }
+            if (hit && !hit.colider.isStatic) {
+                const enemy = hit.node.assertComponent(
+                    ScriptComponent
+                ) as ScriptComponent<EnemyScript>;
+                enemy.script.damage(20);
             }
-        }
-        else {
+        } else {
             Game.ecs.getSystem(SoundSystem).playAudio("gunClick", false, 0.2);
         }
     }

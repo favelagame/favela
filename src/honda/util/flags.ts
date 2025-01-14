@@ -1,1 +1,1 @@
-export type Flags = "noSSAO" | "shadowLow";
+export type Flags = "noSSAO" | "shadowLow" | "rsHalf";

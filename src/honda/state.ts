@@ -5,6 +5,7 @@ import GUI from "muigui";
 import { Flags } from "./util/flags";
 import { ECS } from "./core/ecs";
 import { Scene } from "./core/scene";
+import { IPass } from "./gpu/passes";
 
 export const Game = {
     ecs: new ECS(),
@@ -20,7 +21,17 @@ export const Game = {
     gui: new GUI(),
     perf: new Perf(),
 
-    flags: new Set(window.location.hash.substring(1).split(",") as Flags[]),
+    flags: new Set<Flags>(),
+
+    passes: [] as IPass[],
+
+    finish: (win: boolean) => {
+        if (win) {
+            document.querySelector(".win")?.classList.remove("hidden");
+        } else {
+            document.querySelector(".lose")?.classList.remove("hidden");
+        }
+    },
 };
 
 //@ts-expect-error expose state to the console

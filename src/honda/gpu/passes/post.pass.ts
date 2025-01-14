@@ -21,13 +21,13 @@ export class PostprocessPass implements IPass {
 
     protected guiSettings = {
         fogStart: 0,
-        fogEnd: 3,
-        fogDensity: 0.01,
-        fogColor: [0.6, 0.6, 0.6],
+        fogEnd: 100,
+        fogDensity: 0.47,
+        fogColor: [0, 0, 0],
 
         occlusionPower: 1.6,
-        exposure: 1,
-        gamma: 2.2,
+        exposure: 0.5,
+        gamma: 1.7,
 
         bloom: 0.07
     };

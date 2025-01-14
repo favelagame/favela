@@ -91,8 +91,8 @@ export class LightSystem extends System {
         const tmp = vec4.create();
 
         for (const [l, e] of this.components) {
+            if (l.lightInfo.intensity < 0.001) continue;
             const t = e.transform;
-
             let shadowMap = -1;
             let vp: Mat4 | undefined;
 
@@ -121,7 +121,7 @@ export class LightSystem extends System {
                     mat4.perspective(
                         l.lightInfo.outerCone * 2,
                         1,
-                        0.001,
+                        0.01,
                         l.lightInfo.maxRange,
                         proj
                     );
