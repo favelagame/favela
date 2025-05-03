@@ -76,7 +76,7 @@ export class EnemyScript extends Script {
                 const targetAngle = Math.atan2(dx, dz);
                 quat.fromEuler(
                     0,
-                    targetAngle,
+                    targetAngle + Math.PI,
                     0,
                     "xyz",
                     this.node.transform.rotation

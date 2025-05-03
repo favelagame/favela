@@ -31,7 +31,7 @@ export async function createScene() {
     // const main = await GltfBinary.fromUrl("./levelzero.glb");
     const main = await GltfBinary.fromUrl("./levelzero_w.glb");
     const pickups = await GltfBinary.fromUrl("./pickups.glb");
-    const alienation = await GltfBinary.fromUrl("./Alienation.glb");
+    const alienation = await GltfBinary.fromUrl("./Employement.glb");
 
     const skyTex = await createTextureFromImages(
         Game.gpu.device,
@@ -55,7 +55,7 @@ export async function createScene() {
         reload: "audio/reload.ogg",
         gunShot: "audio/gun_shot.ogg",
         breathe: "audio/breathe.ogg",
-        door: "audio/door.mp3"
+        door: "audio/door.mp3",
     });
 
     {
@@ -106,7 +106,7 @@ export async function createScene() {
                 1
             )
         );
-        player.addComponent(new ScriptComponent(new PlayerScript(makeEnemys)));
+        player.addComponent(new ScriptComponent(new PlayerScript(() => {})));
 
         const camera = new SceneNode();
         camera.name = "Camera";
@@ -186,6 +186,8 @@ export async function createScene() {
     }
 
     console.log(Game.scene.tree());
+
+    makeEnemys(); // dev
 
     return { skyTex };
 }
